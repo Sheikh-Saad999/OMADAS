@@ -2,7 +2,7 @@
 
 AI-powered, cloud-based platform that digitizes the full university meeting lifecycle — scheduling, agenda, approvals, live recording, transcription, minutes/resolutions, follow-ups, and historical search — across every faculty and department.
 
-**Final Year Project** | Supervisor: [Dean's name] | Team: [Member 1, Member 2, Member 3, Member 4]
+**Final Year Project** | Supervisor: Dr. Imtiaz Arif | Team: Muhammad Saad, Sameer Ahmed, Junaid Ali, Hammad Khan
 
 ---
 
@@ -69,4 +69,4 @@ cd omadms/backend && pip install -r requirements.txt && flask run
 ```
 
 ## 📄 License
-Academic / Final Year Project — [University name], 2026.
+Academic / Final Year Project — DHA Suffa University, 2026.
