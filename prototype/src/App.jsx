@@ -473,7 +473,7 @@ function OrgStructure() {
       </Card>
       <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200">
         <Landmark size={14} className="mt-0.5 shrink-0" style={{ color: SLATE }} />
-        A system administrator can add/remove Boards of Faculty, Departments, and Programs from this screen — this is what makes OMADMS reusable across different universities without touching code.
+        A system administrator can add/remove Boards of Faculty, Departments, and Programs from this screen — this is what makes MeetIntel reusable across different universities without touching code.
       </div>
     </>
   );
@@ -496,7 +496,7 @@ function ProcessFlow() {
   ];
   return (
     <>
-      <SectionHeader eyebrow="System design" title="Meeting Lifecycle — Process Flow" desc="Exactly how one meeting moves through OMADMS, end to end." />
+      <SectionHeader eyebrow="System design" title="Meeting Lifecycle — Process Flow" desc="Exactly how one meeting moves through MeetIntel, end to end." />
       <div className="space-y-2">
         {steps.map(([title, actor, desc], i) => (
           <div key={title} className="flex gap-3 items-start bg-white rounded-lg border border-slate-200 p-3">
@@ -528,7 +528,7 @@ function BusinessModel() {
   ];
   return (
     <>
-      <SectionHeader eyebrow="Module 11" title="Business Model" desc="How OMADMS is positioned and monetized as a SaaS product." />
+      <SectionHeader eyebrow="Module 11" title="Business Model" desc="How MeetIntel is positioned and monetized as a SaaS product." />
       <div className="grid md:grid-cols-2 gap-4">
         {rows.map(([t, d]) => (
           <Card key={t} title={t}><p className="text-xs text-slate-500 leading-relaxed">{d}</p></Card>
@@ -875,7 +875,7 @@ export default function App() {
     <div className="min-h-screen flex font-sans" style={{ background: BG }}>
       <aside className="w-64 shrink-0 hidden md:flex md:flex-col" style={{ background: NAVY }}>
         <div className="px-5 py-6 border-b border-white/10">
-          <div className="text-white font-serif text-lg leading-tight">OMADMS</div>
+          <div className="text-white font-serif text-lg leading-tight">MeetIntel</div>
           <div className="text-[11px] text-white/50 mt-0.5">Office Minutes, Agenda &<br/>Documentation Mgmt System</div>
         </div>
         <nav className="flex-1 overflow-y-auto py-3">
