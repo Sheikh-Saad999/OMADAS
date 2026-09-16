@@ -7,9 +7,9 @@ import {
   Mail, ListChecks
 } from "lucide-react";
 
-const NAVY = "#7A1F2B";
+const NAVY = "#81181C";
 const SLATE = "#6B4A42";
-const GOLD = "#E8720C";
+const GOLD = "#FAB717";
 const BG = "#FBF7F2";
 
 const NAV = [
