@@ -25,10 +25,6 @@ const NAV = [
   { id: "followup", label: "08 · Follow-up Tracker", icon: ClipboardCheck },
   { id: "archive", label: "09 · Historical Archive", icon: Archive },
   { id: "insights", label: "10 · AI Decision Support", icon: Sparkles },
-  { id: "processflow", label: "Meeting Process Flow", icon: Workflow },
-  { id: "architecture", label: "System Architecture", icon: Network },
-  { id: "stack", label: "Tech Stack & APIs", icon: Cpu },
-  { id: "business", label: "Business Model", icon: DollarSign },
 ];
 
 function Chip({ children, tone = "slate" }) {
@@ -864,8 +860,7 @@ function Stack() {
 const SCREENS = {
   dashboard: Dashboard, orgstructure: OrgStructure, hierarchy: Hierarchy, scheduling: Scheduling, agenda: AgendaBuilder,
   approval: Approval, capture: Capture, transcription: Transcription, minutes: Minutes,
-  followup: FollowUp, archive: ArchiveView, insights: Insights, processflow: ProcessFlow,
-  architecture: Architecture, stack: Stack, business: BusinessModel,
+  followup: FollowUp, archive: ArchiveView, insights: Insights,
 };
 
 export default function App() {
