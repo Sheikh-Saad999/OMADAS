@@ -7,10 +7,10 @@ import {
   Mail, ListChecks
 } from "lucide-react";
 
-const NAVY = "#16233F";
-const SLATE = "#3D5A80";
-const GOLD = "#B8963E";
-const BG = "#F4F5F7";
+const NAVY = "#7A1F2B";
+const SLATE = "#6B4A42";
+const GOLD = "#E8720C";
+const BG = "#FBF7F2";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,7 +33,7 @@ const NAV = [
 
 function Chip({ children, tone = "slate" }) {
   const tones = {
-    slate: { bg: "#E7ECF3", fg: SLATE },
+    slate: { bg: "#F3E4D6", fg: SLATE },
     gold: { bg: "#F6EFDC", fg: "#8A6D1F" },
     green: { bg: "#E4F2EA", fg: "#2E7D5B" },
     red: { bg: "#FBE9E7", fg: "#B23A2E" },
@@ -280,7 +280,7 @@ function Scheduling() {
               {status === "saving" ? "Saving to Notion…" : "Create meeting"}
             </button>
             {status === "success" && (
-              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#D8E3ED", background: "#F7F9FB", color: SLATE }}>
+              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
                 Meeting created in Notion successfully.
               </div>
             )}
@@ -405,7 +405,7 @@ function AgendaBuilder() {
             {status === "saving" ? "Saving to Notion…" : "Submit agenda item"}
           </button>
           {status === "success" && (
-            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#D8E3ED", background: "#F7F9FB", color: SLATE }}>
+            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
               Agenda item submitted to Notion successfully.
             </div>
           )}
@@ -558,7 +558,7 @@ function Approval() {
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           {steps.map(([role, note, status], i) => (
             <React.Fragment key={role}>
-              <div className="flex-1 rounded-lg border p-4" style={{ borderColor: status === "pending" ? "#E7D9AE" : "#D8E3ED", background: status === "pending" ? "#FBF6E8" : "#F7F9FB" }}>
+              <div className="flex-1 rounded-lg border p-4" style={{ borderColor: status === "pending" ? "#E7D9AE" : "#EFD9BE", background: status === "pending" ? "#FBF6E8" : "#FBF3E9" }}>
                 <div className="flex items-center gap-2 mb-1">
                   {status === "done" ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Clock3 size={16} style={{ color: GOLD }} />}
                   <span className="font-medium text-sm" style={{ color: NAVY }}>{role}</span>
@@ -572,7 +572,7 @@ function Approval() {
         <button
           onClick={() => setTracking(!tracking)}
           className="mt-4 text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5"
-          style={{ background: "#E7ECF3", color: SLATE }}
+          style={{ background: "#F3E4D6", color: SLATE }}
         >
           <ListChecks size={13} /> {tracking ? "Hide tracking log" : "Track this request"}
         </button>
@@ -668,7 +668,7 @@ function Transcription() {
           <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#2E7D5B" }}>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live speaker: Azam Khan
           </div>
-          <button onClick={() => setTranslated(!translated)} className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ background: "#E7ECF3", color: SLATE }}>
+          <button onClick={() => setTranslated(!translated)} className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ background: "#F3E4D6", color: SLATE }}>
             {translated ? "Show original (Roman Urdu)" : "Show translated (English)"}
           </button>
         </div>
@@ -695,7 +695,7 @@ function Transcription() {
           <button
             onClick={() => setVoiceCmd(!voiceCmd)}
             className="w-full flex items-center justify-center gap-2 text-sm font-medium rounded-lg py-2.5"
-            style={{ background: voiceCmd ? "#F6EFDC" : "#EEF1F4", color: voiceCmd ? "#8A6D1F" : SLATE }}
+            style={{ background: voiceCmd ? "#F6EFDC" : "#F6EDE3", color: voiceCmd ? "#8A6D1F" : SLATE }}
           >
             <Mic size={15} /> {voiceCmd ? '"Read line number 2" — AI is reading it back now' : 'Try voice command: "Read line number 2"'}
           </button>
@@ -807,12 +807,12 @@ function Insights() {
 
 function Architecture() {
   const layers = [
-    ["Client Layer", "Web dashboard (Next.js) + mobile-responsive views", "#E7ECF3"],
-    ["API / Gateway", "REST API (Flask) · Auth · Role-based access control", "#DCE6F1"],
-    ["Core Services", "Meetings · Agenda · Approval Routing · Follow-up Tracker", "#D8E3ED"],
+    ["Client Layer", "Web dashboard (Next.js) + mobile-responsive views", "#F3E4D6"],
+    ["API / Gateway", "REST API (Flask) · Auth · Role-based access control", "#F5E6D3"],
+    ["Core Services", "Meetings · Agenda · Approval Routing · Follow-up Tracker", "#EFD9BE"],
     ["AI Engine", "Speech-to-Text · Translation · LLM Summarization (Gemini API)", "#F6EFDC"],
-    ["Data Layer", "PostgreSQL (records) · Cloud Object Storage (audio/video)", "#E7ECF3"],
-    ["Infrastructure", "Cloud hosting (AWS/Azure/GCP) · Multi-tenant per institution", "#EDEFF2"],
+    ["Data Layer", "PostgreSQL (records) · Cloud Object Storage (audio/video)", "#F3E4D6"],
+    ["Infrastructure", "Cloud hosting (AWS/Azure/GCP) · Multi-tenant per institution", "#F5EEE5"],
   ];
   return (
     <>
@@ -902,7 +902,7 @@ export default function App() {
           {NAV.map(({ id, label }) => (
             <button key={id} onClick={() => setActive(id)}
               className="text-xs px-3 py-1.5 rounded-full whitespace-nowrap"
-              style={{ background: active === id ? NAVY : "#EEF1F4", color: active === id ? "#fff" : "#555" }}>
+              style={{ background: active === id ? NAVY : "#F6EDE3", color: active === id ? "#fff" : "#555" }}>
               {label.replace(/^\d+\s·\s/, "")}
             </button>
           ))}
