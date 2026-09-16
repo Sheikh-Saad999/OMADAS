@@ -889,7 +889,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/40">Prototype build · FYP 2026</div>
+        <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/40">Powered by MeetIntel · DSU</div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
