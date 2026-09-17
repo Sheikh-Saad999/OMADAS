@@ -135,12 +135,12 @@ function Hierarchy() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Organizational tree">
           <div className="space-y-2 text-sm">
-            <div className="rounded-lg px-3 py-2 font-medium text-white" style={{ background: NAVY }}>University</div>
+            <div className="rounded-lg px-3 py-2 font-medium text-white" style={{ background: NAVY }}>DHA Suffa University</div>
             <div className="ml-4 rounded-lg px-3 py-2 border" style={{ borderColor: SLATE, color: SLATE }}>Faculty of Management Sciences</div>
             <div className="ml-8 rounded-lg px-3 py-2 bg-slate-50 border border-slate-200">Dept. of Business Administration</div>
             <div className="ml-12 rounded-lg px-3 py-2 bg-slate-50 border border-dashed border-slate-300 text-slate-500">Program: BBA</div>
-            <div className="ml-4 rounded-lg px-3 py-2 border mt-2" style={{ borderColor: SLATE, color: SLATE }}>Faculty of Humanities</div>
-            <div className="ml-8 rounded-lg px-3 py-2 bg-slate-50 border border-slate-200">Dept. of English & Media</div>
+            <div className="ml-4 rounded-lg px-3 py-2 border mt-2" style={{ borderColor: SLATE, color: SLATE }}>Faculty of Humanities & Social Sciences</div>
+            <div className="ml-8 rounded-lg px-3 py-2 bg-slate-50 border border-slate-200">Dept. of English & Media Studies</div>
           </div>
         </Card>
         <Card title="Role-based permissions">
@@ -446,14 +446,14 @@ function AgendaBuilder() {
 
 function OrgStructure() {
   const bof = [
-    ["Board of Faculty — Engineering & Applied Sciences", ["Civil", "Electrical", "Mechanical"]],
-    ["Board of Faculty — Management Sciences", ["Business Administration", "Business Analytics & Programming"]],
-    ["Board of Faculty — Computing & Information Technology", ["CS", "IT", "SE", "CS (DCK Campus)"]],
-    ["Board of Faculty — Humanities & Social Sciences", ["English & Media Studies", "Psychology", "Social Sciences"]],
+    ["Faculty of Engineering & Applied Sciences", ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering"]],
+    ["Faculty of Computing & Information Technology", ["Computer Science", "Software Engineering", "Data Sciences", "Cyber Security & AI"]],
+    ["Faculty of Management Sciences", ["Business Administration (BBA/MBA)", "Business Analytics & Programming", "Accounting & Finance"]],
+    ["Faculty of Humanities & Social Sciences", ["English & Media Studies", "Psychology", "International Relations"]],
   ];
   return (
     <>
-      <SectionHeader eyebrow="Configurable per institution" title="University Organizational Structure" desc="Academic Council → Board of Faculty → Department → Program. This tree is configured once per client institution — not hard-coded." />
+      <SectionHeader eyebrow="DHA Suffa University · Main Campus" title="University Organizational Structure" desc="Academic Council → Faculty → Department — the governance hierarchy every meeting and approval in MeetIntel is routed through." />
       <Card>
         <div className="rounded-lg px-4 py-2.5 font-medium text-white text-sm mb-3" style={{ background: NAVY }}>Academic Council</div>
         <div className="space-y-3">
@@ -469,7 +469,7 @@ function OrgStructure() {
       </Card>
       <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200">
         <Landmark size={14} className="mt-0.5 shrink-0" style={{ color: SLATE }} />
-        A system administrator can add/remove Boards of Faculty, Departments, and Programs from this screen — this is what makes MeetIntel reusable across different universities without touching code.
+        Registrar's Office can add or update Faculties, Departments, and Programs here as the university structure evolves — no code changes required.
       </div>
     </>
   );
