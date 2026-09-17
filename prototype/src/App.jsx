@@ -273,11 +273,11 @@ function Scheduling() {
               style={{ background: NAVY }}
             >
               <Send size={14} />
-              {status === "saving" ? "Saving to Notion…" : "Create meeting"}
+              {status === "saving" ? "Saving…" : "Create meeting"}
             </button>
             {status === "success" && (
               <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
-                Meeting created in Notion successfully.
+                Meeting created successfully.
               </div>
             )}
             {status === "error" && (
@@ -398,11 +398,11 @@ function AgendaBuilder() {
             style={{ background: NAVY }}
           >
             <Send size={14} />
-            {status === "saving" ? "Saving to Notion…" : "Submit agenda item"}
+            {status === "saving" ? "Saving…" : "Submit agenda item"}
           </button>
           {status === "success" && (
             <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
-              Agenda item submitted to Notion successfully.
+              Agenda item submitted successfully.
             </div>
           )}
           {status === "error" && (
@@ -579,7 +579,7 @@ function Approval() {
 
   return (
     <>
-      <SectionHeader eyebrow="Module 04" title="Approval Routing" desc="Agenda items submitted by members, awaiting the chair's decision. Approving or rejecting here updates Notion immediately." />
+      <SectionHeader eyebrow="Module 04" title="Approval Routing" desc="Agenda items submitted by members, awaiting the chair's decision. Approving or rejecting here updates the record immediately." />
       <Card title="Pending approvals">
         {loading && <p className="text-sm text-slate-400">Loading pending items…</p>}
         {!loading && errorMsg && (
@@ -852,7 +852,7 @@ function FollowUp() {
             </div>
           </div>
           <button onClick={submit} disabled={saving} className="mt-1 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: NAVY }}>
-            <Send size={14} /> {saving ? "Saving to Notion…" : "Add action item"}
+            <Send size={14} /> {saving ? "Saving…" : "Add action item"}
           </button>
           {errorMsg && (
             <div className="rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>{errorMsg}</div>
