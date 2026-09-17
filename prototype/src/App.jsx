@@ -122,6 +122,29 @@ function Dashboard() {
   );
 }
 
+function TreeNode({ node, childrenOf, depth }) {
+  const kids = childrenOf[node.name] || [];
+  const styles = [
+    { background: NAVY, color: "white", fontWeight: 500 },
+    { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
+    { background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#334155" },
+    { background: "#F8FAFC", border: "1px dashed #CBD5E1", color: "#64748B" },
+  ];
+  const style = styles[Math.min(depth, styles.length - 1)];
+  return (
+    <div>
+      <div className="rounded-lg px-3 py-2 text-sm" style={{ marginLeft: depth * 24, ...style }}>
+        {node.name} {node.level && <span className="opacity-60 text-xs">· {node.level}</span>}
+      </div>
+      {kids.map((child) => (
+        <div key={child.id} className="mt-2">
+          <TreeNode node={child} childrenOf={childrenOf} depth={depth + 1} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Hierarchy() {
   const roles = [
     ["Vice Chancellor", "Final approval authority", true, true, true],
@@ -129,18 +152,97 @@ function Hierarchy() {
     ["HOD", "Schedules meetings, sets agenda", true, false, false],
     ["Faculty / BOS member", "Attends, comments, votes", false, false, false],
   ];
+
+  const [nodes, setNodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [form, setForm] = useState({ name: "", level: "", parent: "" });
+  const [saving, setSaving] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/get-hierarchy");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to load hierarchy");
+      setNodes(data.nodes || []);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const submit = async () => {
+    if (!form.name.trim()) {
+      setErrorMsg("Name is required.");
+      return;
+    }
+    setSaving(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/add-hierarchy-node", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to add node");
+      setForm({ name: "", level: "", parent: "" });
+      setShowAdd(false);
+      await load();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const childrenOf = {};
+  nodes.forEach((n) => {
+    const key = n.parent || "__root__";
+    if (!childrenOf[key]) childrenOf[key] = [];
+    childrenOf[key].push(n);
+  });
+  const roots = nodes.filter((n) => !n.parent || !nodes.some((p) => p.name === n.parent));
+
   return (
     <>
       <SectionHeader eyebrow="Module 01" title="User & Hierarchy Management" desc="Mirrors the university's real structure so permissions and routing follow the actual chain of command." />
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Organizational tree">
-          <div className="space-y-2 text-sm">
-            <div className="rounded-lg px-3 py-2 font-medium text-white" style={{ background: NAVY }}>DHA Suffa University</div>
-            <div className="ml-4 rounded-lg px-3 py-2 border" style={{ borderColor: SLATE, color: SLATE }}>Faculty of Management Sciences</div>
-            <div className="ml-8 rounded-lg px-3 py-2 bg-slate-50 border border-slate-200">Dept. of Business Administration</div>
-            <div className="ml-12 rounded-lg px-3 py-2 bg-slate-50 border border-dashed border-slate-300 text-slate-500">Program: BBA</div>
-            <div className="ml-4 rounded-lg px-3 py-2 border mt-2" style={{ borderColor: SLATE, color: SLATE }}>Faculty of Humanities & Social Sciences</div>
-            <div className="ml-8 rounded-lg px-3 py-2 bg-slate-50 border border-slate-200">Dept. of English & Media Studies</div>
+          {loading && <p className="text-sm text-slate-400">Loading…</p>}
+          {errorMsg && (
+            <div className="rounded-lg border p-3 text-xs mb-3" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>{errorMsg}</div>
+          )}
+          {!loading && (
+            <div className="space-y-2">
+              {roots.map((root) => (
+                <TreeNode key={root.id} node={root} childrenOf={childrenOf} depth={0} />
+              ))}
+            </div>
+          )}
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            {!showAdd ? (
+              <button onClick={() => setShowAdd(true)} className="text-xs font-medium" style={{ color: SLATE }}>+ Add a node</button>
+            ) : (
+              <div className="space-y-2 text-sm">
+                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.name} onChange={update("name")} placeholder="Name, e.g. Dept. of Computer Science" />
+                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.level} onChange={update("level")} placeholder="Level, e.g. Department" />
+                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.parent} onChange={update("parent")} placeholder="Parent's exact name, e.g. Board of Faculty — Computing & IT" />
+                <button onClick={submit} disabled={saving} className="text-xs font-medium px-3 py-1.5 rounded-full text-white disabled:opacity-60" style={{ background: NAVY }}>
+                  {saving ? "Saving…" : "Add node"}
+                </button>
+              </div>
+            )}
           </div>
         </Card>
         <Card title="Role-based permissions">
