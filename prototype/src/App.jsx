@@ -894,21 +894,119 @@ function FollowUp() {
 }
 
 function ArchiveView() {
-  const [q, setQ] = useState("when was BBA internship made mandatory");
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [form, setForm] = useState({ meeting: "", date: "", resolution: "" });
+  const [saving, setSaving] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const runSearch = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    setSearched(true);
+    try {
+      const res = await fetch(`/api/search-archive?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Search failed");
+      setItems(data.items || []);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const submitEntry = async () => {
+    if (!form.meeting.trim()) {
+      setErrorMsg("Meeting name is required.");
+      return;
+    }
+    setSaving(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/create-archive-entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to add entry");
+      setForm({ meeting: "", date: "", resolution: "" });
+      setShowAdd(false);
+      runSearch();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <>
-      <SectionHeader eyebrow="Module 09" title="Searchable Historical Archive" desc="Ask a plain question years later — the exact meeting, date, and resolution comes back instantly." />
+      <SectionHeader eyebrow="Module 09" title="Searchable Historical Archive" desc="Ask a plain question years later — the matching meeting, date, and resolution comes back instantly." />
       <Card>
-        <div className="flex items-center gap-2 border rounded-full px-4 py-2.5 border-slate-200 mb-5">
+        <div className="flex items-center gap-2 border rounded-full px-4 py-2.5 border-slate-200 mb-3">
           <Search size={16} className="text-slate-400" />
-          <input value={q} onChange={e => setQ(e.target.value)} className="flex-1 text-sm outline-none" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            placeholder="e.g. internship mandatory"
+            className="flex-1 text-sm outline-none"
+          />
+          <button onClick={runSearch} className="text-xs font-medium px-3 py-1.5 rounded-full text-white" style={{ background: NAVY }}>
+            Search
+          </button>
         </div>
-        <div className="rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-            <Building2 size={13} /> BOS — BBA Program · 28 Jul 2026 · Resolution 2026-BOS-014
-          </div>
-          <p className="text-sm text-slate-700">Matched: <em>"RESOLVED: Internship is made mandatory for all BBA students, effective Fall 2026."</em></p>
-          <button className="mt-3 text-xs font-medium" style={{ color: SLATE }}>Open full transcript & minutes →</button>
+
+        {loading && <p className="text-sm text-slate-400">Searching…</p>}
+        {errorMsg && (
+          <div className="rounded-lg border p-3 text-xs mb-3" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>{errorMsg}</div>
+        )}
+        {!loading && searched && items.length === 0 && !errorMsg && (
+          <p className="text-sm text-slate-400 mb-2">No matching resolutions found.</p>
+        )}
+
+        <div className="space-y-3">
+          {items.map((it) => (
+            <div key={it.id} className="rounded-lg border border-slate-200 p-4">
+              <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                <Building2 size={13} /> {it.meeting} · {it.date}
+              </div>
+              <p className="text-sm text-slate-700">{it.resolution}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          {!showAdd ? (
+            <button onClick={() => setShowAdd(true)} className="text-xs font-medium" style={{ color: SLATE }}>+ Archive a resolution</button>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div>
+                <label className="text-xs text-slate-400">Meeting</label>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.meeting} onChange={update("meeting")} placeholder="e.g. BOS - BBA Program" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400">Date</label>
+                  <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.date} onChange={update("date")} placeholder="e.g. 28 Jul 2026" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400">Resolution</label>
+                <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.resolution} onChange={update("resolution")} placeholder="e.g. RESOLVED: Internship made mandatory for all BBA students." />
+              </div>
+              <button onClick={submitEntry} disabled={saving} className="text-xs font-medium px-3 py-1.5 rounded-full text-white disabled:opacity-60" style={{ background: NAVY }}>
+                {saving ? "Saving…" : "Save to archive"}
+              </button>
+            </div>
+          )}
         </div>
       </Card>
     </>
