@@ -123,7 +123,8 @@ function Dashboard() {
 }
 
 function TreeNode({ node, childrenOf, depth }) {
-  const kids = childrenOf[node.name] || [];
+  const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+  const kids = childrenOf[norm(node.name)] || [];
   const styles = [
     { background: NAVY, color: "white", fontWeight: 500 },
     { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
@@ -206,13 +207,14 @@ function Hierarchy() {
     }
   };
 
+  const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
   const childrenOf = {};
   nodes.forEach((n) => {
-    const key = n.parent || "__root__";
+    const key = n.parent ? norm(n.parent) : "__root__";
     if (!childrenOf[key]) childrenOf[key] = [];
     childrenOf[key].push(n);
   });
-  const roots = nodes.filter((n) => !n.parent || !nodes.some((p) => p.name === n.parent));
+  const roots = nodes.filter((n) => !n.parent || !nodes.some((p) => norm(p.name) === norm(n.parent)));
 
   return (
     <>
