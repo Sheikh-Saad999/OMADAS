@@ -47,7 +47,7 @@ function Chip({ children, tone = "slate" }) {
 
 function Card({ title, eyebrow, children, className = "" }) {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 p-5 ${className}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-5 ${className}`}>
       {eyebrow && (
         <div className="text-[11px] tracking-widest uppercase font-semibold mb-1" style={{ color: SLATE }}>
           {eyebrow}
@@ -840,7 +840,7 @@ function FollowUp() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-slate-400">Owner</label>
-              <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.owner} onChange={update("owner")} placeholder="e.g. Azam Khan" />
+              <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.owner} onChange={update("owner")} placeholder="e.g. Dr. Sana Malik" />
             </div>
             <div>
               <label className="text-xs text-slate-400">Due date</label>
