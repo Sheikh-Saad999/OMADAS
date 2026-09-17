@@ -756,33 +756,138 @@ function Minutes() {
 }
 
 function FollowUp() {
-  const items = [
-    ["Draft updated BBA program handbook clause", "HOD, BBA", "05 Aug 2026", "In progress"],
-    ["Notify current Fall 2025 cohort of grace period", "Registrar's Office", "10 Aug 2026", "Pending"],
-    ["Circulate resolution to industry partners", "Azam Khan", "01 Aug 2026", "Done"],
-  ];
-  const toneFor = s => s === "Done" ? "green" : s === "In progress" ? "gold" : "slate";
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [form, setForm] = useState({ item: "", owner: "", due: "", meeting: "" });
+  const [saving, setSaving] = useState(false);
+  const [actingOn, setActingOn] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/get-followups");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to load follow-ups");
+      setItems(data.items || []);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const submit = async () => {
+    if (!form.item.trim()) {
+      setErrorMsg("Action item title is required.");
+      return;
+    }
+    setSaving(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/create-followup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to add follow-up");
+      setForm({ item: "", owner: "", due: "", meeting: "" });
+      await load();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const markDone = async (id) => {
+    setActingOn(id);
+    try {
+      const res = await fetch("/api/update-followup-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId: id, status: "Done" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to update status");
+      setItems(items.map((i) => (i.id === id ? { ...i, status: "Done" } : i)));
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setActingOn(null);
+    }
+  };
+
+  const toneFor = (s) => (s === "Done" ? "green" : s === "In progress" ? "gold" : "slate");
+
   return (
     <>
-      <SectionHeader eyebrow="Module 08" title="Follow-up & Action Tracker" desc="Open items from a resolution automatically resurface at the next related meeting." />
+      <SectionHeader eyebrow="Module 08" title="Follow-up & Action Tracker" desc="Open items from a resolution, tracked until they're closed out." />
+      <Card title="Add an action item" className="mb-4">
+        <div className="space-y-3 text-sm">
+          <div>
+            <label className="text-xs text-slate-400">Action item</label>
+            <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.item} onChange={update("item")} placeholder="e.g. Circulate resolution to industry partners" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-slate-400">Owner</label>
+              <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.owner} onChange={update("owner")} placeholder="e.g. Azam Khan" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400">Due date</label>
+              <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.due} onChange={update("due")} placeholder="e.g. 10 Aug 2026" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400">Meeting</label>
+              <input className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none" value={form.meeting} onChange={update("meeting")} placeholder="e.g. BOS - BBA Program" />
+            </div>
+          </div>
+          <button onClick={submit} disabled={saving} className="mt-1 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: NAVY }}>
+            <Send size={14} /> {saving ? "Saving to Notion…" : "Add action item"}
+          </button>
+          {errorMsg && (
+            <div className="rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>{errorMsg}</div>
+          )}
+        </div>
+      </Card>
       <Card>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-slate-400 text-xs">
-              <th className="pb-2">Action item</th><th className="pb-2">Owner</th><th className="pb-2">Due</th><th className="pb-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(([t, o, d, s]) => (
-              <tr key={t} className="border-t border-slate-100">
-                <td className="py-3 pr-4" style={{ color: NAVY }}>{t}</td>
-                <td className="py-3 text-slate-500">{o}</td>
-                <td className="py-3 text-slate-500">{d}</td>
-                <td className="py-3"><Chip tone={toneFor(s)}>{s}</Chip></td>
+        {loading && <p className="text-sm text-slate-400">Loading…</p>}
+        {!loading && items.length === 0 && <p className="text-sm text-slate-400">No action items yet.</p>}
+        {!loading && items.length > 0 && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-400 text-xs">
+                <th className="pb-2">Action item</th><th className="pb-2">Owner</th><th className="pb-2">Due</th><th className="pb-2">Status</th><th className="pb-2"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((it) => (
+                <tr key={it.id} className="border-t border-slate-100">
+                  <td className="py-3 pr-4" style={{ color: NAVY }}>{it.item}</td>
+                  <td className="py-3 text-slate-500">{it.owner || "—"}</td>
+                  <td className="py-3 text-slate-500">{it.due || "—"}</td>
+                  <td className="py-3"><Chip tone={toneFor(it.status)}>{it.status}</Chip></td>
+                  <td className="py-3">
+                    {it.status !== "Done" && (
+                      <button onClick={() => markDone(it.id)} disabled={actingOn === it.id} className="text-xs font-medium px-3 py-1 rounded-full disabled:opacity-60" style={{ background: "#E4F2EA", color: "#2E7D5B" }}>
+                        Mark done
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Card>
     </>
   );
