@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard, Users, CalendarClock, ListTree, GitBranch, Video, Mic,
   FileSignature, ClipboardCheck, Archive, Sparkles, Network, Cpu, Search,
-  CheckCircle2, Clock3, ChevronRight, Circle, PlayCircle, Send, MessageSquare,
+  CheckCircle2, XCircle, Clock3, ChevronRight, Circle, PlayCircle, Send, MessageSquare,
   ShieldCheck, Building2, Landmark, Paperclip, Ban, Volume2, Workflow, DollarSign,
   Mail, ListChecks
 } from "lucide-react";
@@ -535,60 +535,90 @@ function BusinessModel() {
 }
 
 function Approval() {
-  const [tracking, setTracking] = useState(false);
-  const steps = [
-    ["Department", "Requested by Saad — Technology & Ops", "done"],
-    ["Dean", "\"Approved, forward to VC for budget sign-off.\"", "done"],
-    ["Vice Chancellor", "Pending final sign-off", "pending"],
-  ];
-  const timeline = [
-    ["Request submitted", "Saad, Technology & Ops", "24 Jul 2026 · 10:12 AM", "done"],
-    ["Reviewed by Department", "Auto-forwarded, no blockers", "24 Jul 2026 · 11:40 AM", "done"],
-    ["Approved by Dean", "Comment added, forwarded to VC", "25 Jul 2026 · 3:05 PM", "done"],
-    ["Awaiting Vice Chancellor sign-off", "In queue — 2 requests ahead", "Since 25 Jul 2026 · 3:06 PM", "pending"],
-  ];
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [actingOn, setActingOn] = useState(null); // pageId currently being approved/rejected
+
+  const loadItems = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/get-pending-agenda-items");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to load agenda items");
+      setItems(data.items || []);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const act = async (pageId, status) => {
+    setActingOn(pageId);
+    try {
+      const res = await fetch("/api/update-agenda-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to update status");
+      setItems(items.filter((i) => i.id !== pageId));
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setActingOn(null);
+    }
+  };
+
   return (
     <>
-      <SectionHeader eyebrow="Module 04" title="Approval & Routing Workflow" desc="Example: request for a Claude paid subscription, routed Department → Dean → VC — with live tracking at every stage." />
-      <Card>
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          {steps.map(([role, note, status], i) => (
-            <React.Fragment key={role}>
-              <div className="flex-1 rounded-lg border p-4" style={{ borderColor: status === "pending" ? "#E7D9AE" : "#EFD9BE", background: status === "pending" ? "#FBF6E8" : "#FBF3E9" }}>
-                <div className="flex items-center gap-2 mb-1">
-                  {status === "done" ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Clock3 size={16} style={{ color: GOLD }} />}
-                  <span className="font-medium text-sm" style={{ color: NAVY }}>{role}</span>
-                </div>
-                <p className="text-xs text-slate-500">{note}</p>
-              </div>
-              {i < steps.length - 1 && <ChevronRight className="hidden md:block text-slate-300 shrink-0" />}
-            </React.Fragment>
-          ))}
-        </div>
-        <button
-          onClick={() => setTracking(!tracking)}
-          className="mt-4 text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5"
-          style={{ background: "#F3E4D6", color: SLATE }}
-        >
-          <ListChecks size={13} /> {tracking ? "Hide tracking log" : "Track this request"}
-        </button>
-        {tracking && (
-          <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-            {timeline.map(([title, note, time, status], i) => (
-              <div key={title} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: status === "done" ? "#2E7D5B" : GOLD }} />
-                  {i < timeline.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" />}
-                </div>
-                <div className="pb-3">
-                  <div className="text-sm font-medium" style={{ color: NAVY }}>{title}</div>
-                  <div className="text-xs text-slate-500">{note}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{time}</div>
-                </div>
-              </div>
-            ))}
+      <SectionHeader eyebrow="Module 04" title="Approval Routing" desc="Agenda items submitted by members, awaiting the chair's decision. Approving or rejecting here updates Notion immediately." />
+      <Card title="Pending approvals">
+        {loading && <p className="text-sm text-slate-400">Loading pending items…</p>}
+        {!loading && errorMsg && (
+          <div className="rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>
+            {errorMsg}
           </div>
         )}
+        {!loading && !errorMsg && items.length === 0 && (
+          <p className="text-sm text-slate-400">No agenda items are waiting for approval right now.</p>
+        )}
+        <ul className="divide-y divide-slate-100">
+          {items.map((it) => (
+            <li key={it.id} className="py-4">
+              <div className="font-medium text-sm" style={{ color: NAVY }}>{it.title}</div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                Submitted by {it.submittedBy || "—"} · {it.meeting || "—"}
+              </div>
+              {it.comment && <div className="text-xs text-slate-400 mt-1">"{it.comment}"</div>}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => act(it.id, "Approved")}
+                  disabled={actingOn === it.id}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 disabled:opacity-60"
+                  style={{ background: "#E4F2EA", color: "#2E7D5B" }}
+                >
+                  <CheckCircle2 size={13} /> Approve
+                </button>
+                <button
+                  onClick={() => act(it.id, "Rejected")}
+                  disabled={actingOn === it.id}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 disabled:opacity-60"
+                  style={{ background: "#FBE9E7", color: "#B23A2E" }}
+                >
+                  <XCircle size={13} /> Reject
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       </Card>
     </>
   );
