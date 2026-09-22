@@ -70,20 +70,48 @@ function SectionHeader({ eyebrow, title, desc }) {
 
 /* ---------- Screens ---------- */
 
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 function Dashboard() {
+  const [stats, setStats] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const bars = [40, 65, 50, 80, 60, 95, 70];
+
+  useEffect(() => {
+    fetch("/api/get-dashboard-stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.stats) setStats(data.stats);
+        if (data.events) setEvents(data.events);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const cards = [
+    ["Meetings scheduled", stats?.activeMeetings, "green"],
+    ["Pending approvals", stats?.pendingApprovals, "gold"],
+    ["Resolutions archived", stats?.resolutions, "slate"],
+    ["Open action items", stats?.openFollowups, "slate"],
+  ];
+
   return (
     <>
       <SectionHeader eyebrow="Overview" title="Governance Dashboard" desc="Live snapshot of meetings, approvals and resolutions across every faculty and department." />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          ["Active meetings", "6", "green"],
-          ["Pending approvals", "3", "gold"],
-          ["Resolutions (2026)", "27", "slate"],
-          ["Departments onboarded", "12", "slate"],
-        ].map(([label, val, tone]) => (
+        {cards.map(([label, val]) => (
           <Card key={label}>
-            <div className="text-3xl font-serif" style={{ color: NAVY }}>{val}</div>
+            <div className="text-3xl font-serif" style={{ color: NAVY }}>{loading ? "—" : val ?? 0}</div>
             <div className="text-xs text-slate-500 mt-1">{label}</div>
           </Card>
         ))}
@@ -100,17 +128,15 @@ function Dashboard() {
           </div>
         </Card>
         <Card title="Recent activity">
+          {loading && <p className="text-sm text-slate-400">Loading…</p>}
+          {!loading && events.length === 0 && <p className="text-sm text-slate-400">No activity yet.</p>}
           <ul className="space-y-3 text-sm">
-            {[
-              ["BOS resolved BBA internship policy", "2h ago"],
-              ["Dean approved Claude subscription request", "5h ago"],
-              ["HOD Humanities scheduled faculty board", "1d ago"],
-            ].map(([t, when]) => (
-              <li key={t} className="flex gap-2">
+            {events.map((e, i) => (
+              <li key={i} className="flex gap-2">
                 <Circle size={8} className="mt-1.5 shrink-0" style={{ color: GOLD }} fill={GOLD} />
                 <div>
-                  <div className="text-slate-700">{t}</div>
-                  <div className="text-[11px] text-slate-400">{when}</div>
+                  <div className="text-slate-700">{e.text}</div>
+                  <div className="text-[11px] text-slate-400">{timeAgo(e.time)}</div>
                 </div>
               </li>
             ))}
