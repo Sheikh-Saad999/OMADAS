@@ -160,38 +160,82 @@ function Hierarchy() {
       {
         name: "Board of Faculty — Engineering & Applied Sciences", level: "Board of Faculty",
         children: [
-          { name: "BE Civil Engineering", level: "Program" },
-          { name: "BE Electrical Engineering", level: "Program" },
-          { name: "BE Mechanical Engineering", level: "Program" },
-          { name: "BS Computer Engineering Technology", level: "Program" },
+          { name: "BE", level: "Department", children: [
+            { name: "Mechanical Engineering", level: "Program" },
+            { name: "Electrical Engineering", level: "Program" },
+          ]},
+          { name: "BS", level: "Department", children: [
+            { name: "Computer Engineering Technology", level: "Program" },
+          ]},
+          { name: "ME (Evening/Weekend)", level: "Department", children: [
+            { name: "Mechanical Engineering", level: "Program" },
+            { name: "Electrical Engineering", level: "Program" },
+          ]},
+          { name: "PhD (Evening/Weekend)", level: "Department", children: [
+            { name: "Mechanical Engineering", level: "Program" },
+            { name: "Electrical Engineering", level: "Program" },
+          ]},
         ],
       },
       {
         name: "Board of Faculty — Computing & Information Technology", level: "Board of Faculty",
         children: [
-          { name: "BS Computer Science", level: "Program" },
-          { name: "BS Computer Engineering", level: "Program" },
-          { name: "BS Software Engineering", level: "Program" },
-          { name: "BS Cyber Security", level: "Program" },
-          { name: "BS Data Science", level: "Program" },
-          { name: "BS Artificial Intelligence", level: "Program" },
+          { name: "BS", level: "Department", children: [
+            { name: "Computer Science", level: "Program" },
+            { name: "Software Engineering", level: "Program" },
+            { name: "Data Science", level: "Program" },
+            { name: "Artificial Intelligence", level: "Program" },
+            { name: "Cyber Security", level: "Program" },
+            { name: "Computer Engineering", level: "Program" },
+            { name: "Multimedia and Gaming", level: "Program" },
+          ]},
+          { name: "MS (Evening/Weekend)", level: "Department", children: [
+            { name: "Computer Science", level: "Program" },
+          ]},
+          { name: "PhD (Evening/Weekend)", level: "Department", children: [
+            { name: "Computer Science", level: "Program" },
+          ]},
         ],
       },
       {
         name: "Board of Faculty — Management Sciences", level: "Board of Faculty",
         children: [
-          { name: "BBA", level: "Program" },
-          { name: "BS Accounting & Finance", level: "Program" },
-          { name: "BS Business Analytics & Programming", level: "Program" },
+          { name: "BBA (4 Years/2.5 Years after ADP)", level: "Department", children: [
+            { name: "Finance/HRM/Marketing/SCM", level: "Program" },
+          ]},
+          { name: "Associate Degree", level: "Department", children: [
+            { name: "Business Administration", level: "Program" },
+            { name: "Accounting & Finance", level: "Program" },
+            { name: "Business Analytics & Programming", level: "Program" },
+          ]},
+          { name: "MBA (Evening/Weekend)", level: "Department", children: [
+            { name: "Finance/HRM/Marketing/SCM/Business Analytics", level: "Program" },
+          ]},
+          { name: "BS", level: "Department", children: [
+            { name: "Business Analytics and Programming", level: "Program" },
+            { name: "Accounting and Finance", level: "Program" },
+            { name: "FinTech", level: "Program" },
+          ]},
+          { name: "MS (Evening/Weekend)", level: "Department", children: [
+            { name: "Management Sciences", level: "Program" },
+          ]},
+          { name: "PhD (Evening/Weekend)", level: "Department", children: [
+            { name: "Management Sciences", level: "Program" },
+          ]},
         ],
       },
       {
         name: "Board of Faculty — Humanities & Social Sciences", level: "Board of Faculty",
         children: [
-          { name: "BS Psychology", level: "Program" },
-          { name: "BS International Relations", level: "Program" },
-          { name: "BS English", level: "Program" },
-          { name: "MPhil Psychology", level: "Program" },
+          { name: "BS", level: "Department", children: [
+            { name: "Psychology", level: "Program" },
+            { name: "International Relations", level: "Program" },
+            { name: "English", level: "Program" },
+          ]},
+          { name: "MPhil", level: "Department", children: [
+            { name: "Psychology", level: "Program" },
+            { name: "International Relations", level: "Program" },
+          ]},
         ],
       },
     ],
@@ -202,6 +246,7 @@ function Hierarchy() {
       { background: NAVY, color: "white", fontWeight: 500 },
       { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
       { background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#334155" },
+      { background: "#FBFCFD", border: "1px dashed #CBD5E1", color: "#64748B" },
     ];
     const style = styles[Math.min(depth, styles.length - 1)];
     return (
@@ -530,22 +575,48 @@ function AgendaBuilder() {
 
 function OrgStructure() {
   const bof = [
-    ["Faculty of Engineering & Applied Sciences", ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Computer Engineering Technology"]],
-    ["Faculty of Computing & Information Technology", ["Computer Science", "Computer Engineering", "Software Engineering", "Cyber Security", "Data Science", "Artificial Intelligence"]],
-    ["Faculty of Management Sciences", ["BBA", "Accounting & Finance", "Business Analytics & Programming"]],
-    ["Faculty of Humanities & Social Sciences", ["Psychology", "International Relations", "English"]],
+    ["Board of Faculty — Engineering & Applied Sciences", [
+      ["BE", ["Mechanical Engineering", "Electrical Engineering"]],
+      ["BS", ["Computer Engineering Technology"]],
+      ["ME (Evening/Weekend)", ["Mechanical Engineering", "Electrical Engineering"]],
+      ["PhD (Evening/Weekend)", ["Mechanical Engineering", "Electrical Engineering"]],
+    ]],
+    ["Board of Faculty — Computing & Information Technology", [
+      ["BS", ["Computer Science", "Software Engineering", "Data Science", "Artificial Intelligence", "Cyber Security", "Computer Engineering", "Multimedia and Gaming"]],
+      ["MS (Evening/Weekend)", ["Computer Science"]],
+      ["PhD (Evening/Weekend)", ["Computer Science"]],
+    ]],
+    ["Board of Faculty — Management Sciences", [
+      ["BBA (4 Years/2.5 Years after ADP)", ["Finance/HRM/Marketing/SCM"]],
+      ["Associate Degree", ["Business Administration", "Accounting & Finance", "Business Analytics & Programming"]],
+      ["MBA (Evening/Weekend)", ["Finance/HRM/Marketing/SCM/Business Analytics"]],
+      ["BS", ["Business Analytics and Programming", "Accounting and Finance", "FinTech"]],
+      ["MS (Evening/Weekend)", ["Management Sciences"]],
+      ["PhD (Evening/Weekend)", ["Management Sciences"]],
+    ]],
+    ["Board of Faculty — Humanities & Social Sciences", [
+      ["BS", ["Psychology", "International Relations", "English"]],
+      ["MPhil", ["Psychology", "International Relations"]],
+    ]],
   ];
   return (
     <>
-      <SectionHeader eyebrow="DHA Suffa University · Main Campus" title="University Organizational Structure" desc="Academic Council → Faculty → Department — the governance hierarchy every meeting and approval in MeetIntel is routed through." />
+      <SectionHeader eyebrow="DHA Suffa University · Main Campus" title="University Organizational Structure" desc="Academic Council → Board of Faculty → Department → Program — the governance hierarchy every meeting and approval in MeetIntel is routed through." />
       <Card>
         <div className="rounded-lg px-4 py-2.5 font-medium text-white text-sm mb-3" style={{ background: NAVY }}>Academic Council</div>
         <div className="space-y-3">
           {bof.map(([name, depts]) => (
             <div key={name} className="ml-4 rounded-lg border p-3" style={{ borderColor: SLATE }}>
               <div className="text-sm font-medium mb-2" style={{ color: SLATE }}>{name}</div>
-              <div className="ml-4 flex flex-wrap gap-2">
-                {depts.map(d => <Chip key={d}>{d}</Chip>)}
+              <div className="ml-4 space-y-2">
+                {depts.map(([dept, programs]) => (
+                  <div key={dept}>
+                    <div className="text-xs font-medium text-slate-400 mb-1">{dept}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {programs.map(p => <Chip key={p}>{p}</Chip>)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -553,7 +624,7 @@ function OrgStructure() {
       </Card>
       <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200">
         <Landmark size={14} className="mt-0.5 shrink-0" style={{ color: SLATE }} />
-        Registrar's Office can add or update Faculties, Departments, and Programs here as the university structure evolves — no code changes required.
+        Reflects DHA Suffa University's official faculty, department, and program structure at the Main Campus.
       </div>
     </>
   );
