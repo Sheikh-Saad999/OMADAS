@@ -206,6 +206,276 @@ function OrgStructure() {
   );
 }
 
+function Scheduling() {
+  const [form, setForm] = useState({
+    name: "Board of Studies — BBA Program",
+    type: "Board of Studies",
+    date: "",
+    mode: "Online",
+    chair: "",
+  });
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [meetings, setMeetings] = useState([
+    ["Board of Studies — BBA", "28 Jul, 11:00 AM", "Online"],
+    ["Faculty Board — Humanities", "02 Aug, 2:00 PM", "Face-to-face"],
+    ["HOD Sync — Mgmt Sciences", "05 Aug, 10:00 AM", "Online"],
+  ]);
+
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const submitMeeting = async () => {
+    if (!form.name.trim() || !form.date.trim()) {
+      setStatus("error");
+      setErrorMsg("Meeting name and date & time are required.");
+      return;
+    }
+    setStatus("saving");
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/create-meeting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          type: form.type,
+          date: form.date,
+          venueMode: form.mode,
+          chair: form.chair,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to create meeting");
+      setMeetings([[form.name, form.date, form.mode], ...meetings]);
+      setStatus("success");
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err.message);
+    }
+  };
+
+  return (
+    <>
+      <SectionHeader eyebrow="Module 01" title="Meeting Scheduling" desc="Any authorized convener proposes a meeting; invitees are notified automatically by email the moment it's created." />
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card title="New meeting">
+          <div className="space-y-3 text-sm">
+            <div>
+              <label className="text-xs text-slate-400">Meeting type</label>
+              <input
+                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+                value={form.name}
+                onChange={update("name")}
+                placeholder="e.g. Board of Studies — BBA Program"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400">Date & time</label>
+                <input
+                  className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+                  value={form.date}
+                  onChange={update("date")}
+                  placeholder="28 Jul 2026 · 11:00 AM"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400">Mode</label>
+                <div className="mt-1 flex gap-2">
+                  {["Face-to-face", "Online"].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setForm({ ...form, mode: m })}
+                      className="text-left"
+                    >
+                      <Chip tone={form.mode === m ? "green" : "slate"}>{m}</Chip>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400">Chair</label>
+              <input
+                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+                value={form.chair}
+                onChange={update("chair")}
+                placeholder="e.g. Dean, Mgmt Sciences"
+              />
+            </div>
+            <button
+              onClick={submitMeeting}
+              disabled={status === "saving"}
+              className="mt-2 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: NAVY }}
+            >
+              <Send size={14} />
+              {status === "saving" ? "Saving…" : "Create meeting"}
+            </button>
+            {status === "success" && (
+              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
+                Meeting created successfully.
+              </div>
+            )}
+            {status === "error" && (
+              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>
+                {errorMsg}
+              </div>
+            )}
+          </div>
+        </Card>
+        <Card title="Upcoming meetings">
+          <ul className="divide-y divide-slate-100 text-sm">
+            {meetings.map(([t, d, m]) => (
+              <li key={t + d} className="py-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium" style={{ color: NAVY }}>{t}</div>
+                  <div className="text-xs text-slate-400">{d}</div>
+                </div>
+                <Chip tone={m === "Online" ? "green" : "slate"}>{m}</Chip>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function AgendaBuilder() {
+  const initialItems = [
+    { item: "Review of BBA internship policy — mandatory vs. optional", by: "Azam Khan", comment: "Industry partners support a mandatory model.", file: "internship_survey.pdf", status: "approved" },
+    { item: "Update on Fall 2026 admissions criteria", by: "Dr. Sana", comment: "Need updated cut-off marks before vote.", file: "admissions_2026.xlsx", status: "approved" },
+    { item: "Approval of new elective: Digital Marketing Analytics", by: "HOD, BBA", comment: null, file: "course_outline.docx", status: "approved" },
+    { item: "Request to shift Thursday lab slot to Friday", by: "Junaid Ali", comment: "Overlaps with another course.", file: "timetable_clip.mp3", status: "rejected" },
+  ];
+  const [items, setItems] = useState(initialItems);
+  const [form, setForm] = useState({ item: "", by: "", meeting: "BOS - BBA Program", comment: "" });
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const submitItem = async () => {
+    if (!form.item.trim() || !form.by.trim()) {
+      setStatus("error");
+      setErrorMsg("Item title and your name are required.");
+      return;
+    }
+    setStatus("saving");
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/create-agenda-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item: form.item,
+          submittedBy: form.by,
+          meeting: form.meeting,
+          comment: form.comment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to submit agenda item");
+      setItems([{ item: form.item, by: form.by, comment: form.comment || null, file: "", status: "approved" }, ...items]);
+      setForm({ item: "", by: "", meeting: form.meeting, comment: "" });
+      setStatus("success");
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err.message);
+    }
+  };
+
+  const statusTone = s => s === "approved" ? "green" : "red";
+  return (
+    <>
+      <SectionHeader eyebrow="Module 02" title="Agenda Builder" desc="Members submit items with attachments into a shared pool; the chair reviews and filters before the agenda is finalized." />
+      <Card title="Submit a new agenda item" className="mb-4">
+        <div className="space-y-3 text-sm">
+          <div>
+            <label className="text-xs text-slate-400">Item title</label>
+            <input
+              className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+              value={form.item}
+              onChange={update("item")}
+              placeholder="e.g. Approval of new elective course"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-400">Your name</label>
+              <input
+                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+                value={form.by}
+                onChange={update("by")}
+                placeholder="e.g. Dr. Sana Malik"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400">Meeting</label>
+              <input
+                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+                value={form.meeting}
+                onChange={update("meeting")}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400">Comment (optional)</label>
+            <input
+              className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
+              value={form.comment}
+              onChange={update("comment")}
+            />
+          </div>
+          <button
+            onClick={submitItem}
+            disabled={status === "saving"}
+            className="mt-1 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+            style={{ background: NAVY }}
+          >
+            <Send size={14} />
+            {status === "saving" ? "Saving…" : "Submit agenda item"}
+          </button>
+          {status === "success" && (
+            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
+              Agenda item submitted successfully.
+            </div>
+          )}
+          {status === "error" && (
+            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+      </Card>
+      <Card title="Submitted items — pending chair review">
+        <div className="space-y-4">
+          {items.map((it, i) => (
+            <div key={i} className="flex gap-3">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 mt-0.5" style={{ background: "#F3E4D6", color: SLATE }}>{i + 1}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium" style={{ color: NAVY }}>{it.item}</span>
+                  <Chip tone={statusTone(it.status)}>{it.status === "approved" ? "Approved by chair" : "Rejected"}</Chip>
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">Submitted by {it.by}</div>
+                {it.comment && (
+                  <div className="mt-1.5 text-xs bg-slate-50 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+                    <MessageSquare size={12} className="mt-0.5 shrink-0 text-slate-400" />
+                    {it.comment}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </>
+  );
+}
+
 function ProcessFlow() {
   const steps = [
     ["Call for meeting", "Convener/Chair", "Initiates meeting, selects committee & invitees."],
