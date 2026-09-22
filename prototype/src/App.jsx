@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  LayoutDashboard, Users, CalendarClock, ListTree, GitBranch, Video, Mic,
+  LayoutDashboard, CalendarClock, ListTree, GitBranch, Video, Mic,
   FileSignature, ClipboardCheck, Archive, Sparkles, Network, Cpu, Search,
   CheckCircle2, XCircle, Clock3, ChevronRight, Circle, PlayCircle, Send, MessageSquare,
   ShieldCheck, Building2, Landmark, Paperclip, Ban, Volume2, Workflow, DollarSign,
@@ -15,16 +15,15 @@ const BG = "#FBF7F2";
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "orgstructure", label: "University Hierarchy", icon: Landmark },
-  { id: "hierarchy", label: "01 · User & Hierarchy", icon: Users },
-  { id: "scheduling", label: "02 · Meeting Scheduling", icon: CalendarClock },
-  { id: "agenda", label: "03 · Agenda Builder", icon: ListTree },
-  { id: "approval", label: "04 · Approval Routing", icon: GitBranch },
-  { id: "capture", label: "05 · Live Meeting Capture", icon: Video },
-  { id: "transcription", label: "06 · AI Transcription", icon: Mic },
-  { id: "minutes", label: "07 · Minutes & Resolution", icon: FileSignature },
-  { id: "followup", label: "08 · Follow-up Tracker", icon: ClipboardCheck },
-  { id: "archive", label: "09 · Historical Archive", icon: Archive },
-  { id: "insights", label: "10 · AI Decision Support", icon: Sparkles },
+  { id: "scheduling", label: "01 · Meeting Scheduling", icon: CalendarClock },
+  { id: "agenda", label: "02 · Agenda Builder", icon: ListTree },
+  { id: "approval", label: "03 · Approval Routing", icon: GitBranch },
+  { id: "capture", label: "04 · Live Meeting Capture", icon: Video },
+  { id: "transcription", label: "05 · AI Transcription", icon: Mic },
+  { id: "minutes", label: "06 · Minutes & Resolution", icon: FileSignature },
+  { id: "followup", label: "07 · Follow-up Tracker", icon: ClipboardCheck },
+  { id: "archive", label: "08 · Historical Archive", icon: Archive },
+  { id: "insights", label: "09 · AI Decision Support", icon: Sparkles },
 ];
 
 function Chip({ children, tone = "slate" }) {
@@ -122,457 +121,6 @@ function Dashboard() {
   );
 }
 
-function TreeNode({ node, childrenOf, depth }) {
-  const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
-  const kids = childrenOf[norm(node.name)] || [];
-  const styles = [
-    { background: NAVY, color: "white", fontWeight: 500 },
-    { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
-    { background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#334155" },
-    { background: "#F8FAFC", border: "1px dashed #CBD5E1", color: "#64748B" },
-  ];
-  const style = styles[Math.min(depth, styles.length - 1)];
-  return (
-    <div>
-      <div className="rounded-lg px-3 py-2 text-sm" style={{ marginLeft: depth * 24, ...style }}>
-        {node.name} {node.level && <span className="opacity-60 text-xs">· {node.level}</span>}
-      </div>
-      {kids.map((child) => (
-        <div key={child.id} className="mt-2">
-          <TreeNode node={child} childrenOf={childrenOf} depth={depth + 1} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Hierarchy() {
-  const roles = [
-    ["Vice Chancellor", "Final approval authority", true, true, true],
-    ["Dean", "Faculty-level review & comments", true, true, false],
-    ["HOD", "Schedules meetings, sets agenda", true, false, false],
-    ["Faculty / BOS member", "Attends, comments, votes", false, false, false],
-  ];
-
-  const tree = {
-    name: "Academic Council", level: "Academic Council",
-    children: [
-      {
-        name: "Board of Faculty — Engineering & Applied Sciences", level: "Board of Faculty",
-        children: [
-          { name: "BE", level: "Department", children: [
-            { name: "Mechanical Engineering", level: "Program" },
-            { name: "Electrical Engineering", level: "Program" },
-          ]},
-          { name: "BS", level: "Department", children: [
-            { name: "Computer Engineering Technology", level: "Program" },
-          ]},
-          { name: "ME (Evening/Weekend)", level: "Department", children: [
-            { name: "Mechanical Engineering", level: "Program" },
-            { name: "Electrical Engineering", level: "Program" },
-          ]},
-          { name: "PhD (Evening/Weekend)", level: "Department", children: [
-            { name: "Mechanical Engineering", level: "Program" },
-            { name: "Electrical Engineering", level: "Program" },
-          ]},
-        ],
-      },
-      {
-        name: "Board of Faculty — Computing & Information Technology", level: "Board of Faculty",
-        children: [
-          { name: "BS", level: "Department", children: [
-            { name: "Computer Science", level: "Program" },
-            { name: "Software Engineering", level: "Program" },
-            { name: "Data Science", level: "Program" },
-            { name: "Artificial Intelligence", level: "Program" },
-            { name: "Cyber Security", level: "Program" },
-            { name: "Computer Engineering", level: "Program" },
-            { name: "Multimedia and Gaming", level: "Program" },
-          ]},
-          { name: "MS (Evening/Weekend)", level: "Department", children: [
-            { name: "Computer Science", level: "Program" },
-          ]},
-          { name: "PhD (Evening/Weekend)", level: "Department", children: [
-            { name: "Computer Science", level: "Program" },
-          ]},
-        ],
-      },
-      {
-        name: "Board of Faculty — Management Sciences", level: "Board of Faculty",
-        children: [
-          { name: "BBA (4 Years/2.5 Years after ADP)", level: "Department", children: [
-            { name: "Finance/HRM/Marketing/SCM", level: "Program" },
-          ]},
-          { name: "Associate Degree", level: "Department", children: [
-            { name: "Business Administration", level: "Program" },
-            { name: "Accounting & Finance", level: "Program" },
-            { name: "Business Analytics & Programming", level: "Program" },
-          ]},
-          { name: "MBA (Evening/Weekend)", level: "Department", children: [
-            { name: "Finance/HRM/Marketing/SCM/Business Analytics", level: "Program" },
-          ]},
-          { name: "BS", level: "Department", children: [
-            { name: "Business Analytics and Programming", level: "Program" },
-            { name: "Accounting and Finance", level: "Program" },
-            { name: "FinTech", level: "Program" },
-          ]},
-          { name: "MS (Evening/Weekend)", level: "Department", children: [
-            { name: "Management Sciences", level: "Program" },
-          ]},
-          { name: "PhD (Evening/Weekend)", level: "Department", children: [
-            { name: "Management Sciences", level: "Program" },
-          ]},
-        ],
-      },
-      {
-        name: "Board of Faculty — Humanities & Social Sciences", level: "Board of Faculty",
-        children: [
-          { name: "BS", level: "Department", children: [
-            { name: "Psychology", level: "Program" },
-            { name: "International Relations", level: "Program" },
-            { name: "English", level: "Program" },
-          ]},
-          { name: "MPhil", level: "Department", children: [
-            { name: "Psychology", level: "Program" },
-            { name: "International Relations", level: "Program" },
-          ]},
-        ],
-      },
-    ],
-  };
-
-  const StaticTreeNode = ({ node, depth }) => {
-    const styles = [
-      { background: NAVY, color: "white", fontWeight: 500 },
-      { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
-      { background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#334155" },
-      { background: "#FBFCFD", border: "1px dashed #CBD5E1", color: "#64748B" },
-    ];
-    const style = styles[Math.min(depth, styles.length - 1)];
-    return (
-      <div>
-        <div className="rounded-lg px-3 py-2 text-sm" style={{ marginLeft: depth * 20, ...style }}>
-          {node.name} <span className="opacity-60 text-xs">· {node.level}</span>
-        </div>
-        {(node.children || []).map((child) => (
-          <div key={child.name} className="mt-2">
-            <StaticTreeNode node={child} depth={depth + 1} />
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <SectionHeader eyebrow="Module 01" title="User & Hierarchy Management" desc="Mirrors DHA Suffa University's real governance structure so permissions and routing follow the actual chain of command." />
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card title="Organizational tree">
-          <div className="space-y-2">
-            <StaticTreeNode node={tree} depth={0} />
-          </div>
-        </Card>
-        <Card title="Role-based permissions">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400 text-xs">
-                <th className="pb-2">Role</th><th className="pb-2">Scope</th><th className="pb-2 text-center">Approve</th><th className="pb-2 text-center">Route</th><th className="pb-2 text-center">Final</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map(([r, s, a, ro, f]) => (
-                <tr key={r} className="border-t border-slate-100">
-                  <td className="py-2 font-medium" style={{ color: NAVY }}>{r}</td>
-                  <td className="py-2 text-slate-500">{s}</td>
-                  <td className="py-2 text-center">{a ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
-                  <td className="py-2 text-center">{ro ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
-                  <td className="py-2 text-center">{f ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      </div>
-    </>
-  );
-}
-
-function Scheduling() {
-  const [form, setForm] = useState({
-    name: "Board of Studies — BBA Program",
-    type: "Board of Studies",
-    date: "",
-    mode: "Online",
-    chair: "",
-  });
-  const [status, setStatus] = useState("idle"); // idle | saving | success | error
-  const [errorMsg, setErrorMsg] = useState("");
-  const [meetings, setMeetings] = useState([
-    ["Board of Studies — BBA", "28 Jul, 11:00 AM", "Online"],
-    ["Faculty Board — Humanities", "02 Aug, 2:00 PM", "Face-to-face"],
-    ["HOD Sync — Mgmt Sciences", "05 Aug, 10:00 AM", "Online"],
-  ]);
-
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
-
-  const submitMeeting = async () => {
-    if (!form.name.trim() || !form.date.trim()) {
-      setStatus("error");
-      setErrorMsg("Meeting name and date & time are required.");
-      return;
-    }
-    setStatus("saving");
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/create-meeting", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          type: form.type,
-          date: form.date,
-          venueMode: form.mode,
-          chair: form.chair,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || "Failed to create meeting");
-      setMeetings([[form.name, form.date, form.mode], ...meetings]);
-      setStatus("success");
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err.message);
-    }
-  };
-
-  return (
-    <>
-      <SectionHeader eyebrow="Module 02" title="Meeting Scheduling" desc="Any authorized convener proposes a meeting; invitees are notified automatically by email the moment it's created." />
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card title="New meeting">
-          <div className="space-y-3 text-sm">
-            <div>
-              <label className="text-xs text-slate-400">Meeting type</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-                value={form.name}
-                onChange={update("name")}
-                placeholder="e.g. Board of Studies — BBA Program"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-400">Date & time</label>
-                <input
-                  className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-                  value={form.date}
-                  onChange={update("date")}
-                  placeholder="28 Jul 2026 · 11:00 AM"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">Mode</label>
-                <div className="mt-1 flex gap-2">
-                  {["Face-to-face", "Online"].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setForm({ ...form, mode: m })}
-                      className="text-left"
-                    >
-                      <Chip tone={form.mode === m ? "green" : "slate"}>{m}</Chip>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-400">Chair</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-                value={form.chair}
-                onChange={update("chair")}
-                placeholder="e.g. Dean, Mgmt Sciences"
-              />
-            </div>
-            <button
-              onClick={submitMeeting}
-              disabled={status === "saving"}
-              className="mt-2 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: NAVY }}
-            >
-              <Send size={14} />
-              {status === "saving" ? "Saving…" : "Create meeting"}
-            </button>
-            {status === "success" && (
-              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
-                Meeting created successfully.
-              </div>
-            )}
-            {status === "error" && (
-              <div className="mt-3 rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>
-                {errorMsg}
-              </div>
-            )}
-          </div>
-        </Card>
-        <Card title="Upcoming meetings">
-          <ul className="divide-y divide-slate-100 text-sm">
-            {meetings.map(([t, d, m]) => (
-              <li key={t + d} className="py-3 flex items-center justify-between">
-                <div>
-                  <div className="font-medium" style={{ color: NAVY }}>{t}</div>
-                  <div className="text-xs text-slate-400">{d}</div>
-                </div>
-                <Chip tone={m === "Online" ? "green" : "slate"}>{m}</Chip>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-    </>
-  );
-}
-
-function AgendaBuilder() {
-  const initialItems = [
-    { item: "Review of BBA internship policy — mandatory vs. optional", by: "Azam Khan", comment: "Industry partners support a mandatory model.", file: "internship_survey.pdf", status: "approved" },
-    { item: "Update on Fall 2026 admissions criteria", by: "Dr. Sana", comment: "Need updated cut-off marks before vote.", file: "admissions_2026.xlsx", status: "approved" },
-    { item: "Approval of new elective: Digital Marketing Analytics", by: "HOD, BBA", comment: null, file: "course_outline.docx", status: "approved" },
-    { item: "Request to shift Thursday lab slot to Friday", by: "Junaid Ali", comment: "Overlaps with another course.", file: "timetable_clip.mp3", status: "rejected" },
-  ];
-  const [items, setItems] = useState(initialItems);
-  const [form, setForm] = useState({ item: "", by: "", meeting: "BOS - BBA Program", comment: "" });
-  const [status, setStatus] = useState("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
-
-  const submitItem = async () => {
-    if (!form.item.trim() || !form.by.trim()) {
-      setStatus("error");
-      setErrorMsg("Item title and your name are required.");
-      return;
-    }
-    setStatus("saving");
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/create-agenda-item", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          item: form.item,
-          submittedBy: form.by,
-          meeting: form.meeting,
-          comment: form.comment,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || "Failed to submit agenda item");
-      setItems([{ item: form.item, by: form.by, comment: form.comment || null, file: "", status: "approved" }, ...items]);
-      setForm({ item: "", by: "", meeting: form.meeting, comment: "" });
-      setStatus("success");
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err.message);
-    }
-  };
-
-  const statusTone = s => s === "approved" ? "green" : "red";
-  return (
-    <>
-      <SectionHeader eyebrow="Module 03" title="Agenda Builder" desc="Members submit items with attachments into a shared pool; the chair reviews and filters before the agenda is finalized." />
-      <Card title="Submit a new agenda item" className="mb-4">
-        <div className="space-y-3 text-sm">
-          <div>
-            <label className="text-xs text-slate-400">Item title</label>
-            <input
-              className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-              value={form.item}
-              onChange={update("item")}
-              placeholder="e.g. Approval of new elective course"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-400">Your name</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-                value={form.by}
-                onChange={update("by")}
-                placeholder="e.g. Azam Khan"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400">Meeting</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-                value={form.meeting}
-                onChange={update("meeting")}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-slate-400">Comment (optional)</label>
-            <input
-              className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none"
-              value={form.comment}
-              onChange={update("comment")}
-            />
-          </div>
-          <button
-            onClick={submitItem}
-            disabled={status === "saving"}
-            className="mt-1 w-full rounded-lg text-white text-sm py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-            style={{ background: NAVY }}
-          >
-            <Send size={14} />
-            {status === "saving" ? "Saving…" : "Submit agenda item"}
-          </button>
-          {status === "success" && (
-            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#EFD9BE", background: "#FBF3E9", color: SLATE }}>
-              Agenda item submitted successfully.
-            </div>
-          )}
-          {status === "error" && (
-            <div className="mt-1 rounded-lg border p-3 text-xs" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>
-              {errorMsg}
-            </div>
-          )}
-        </div>
-      </Card>
-      <Card title="Submitted items — pending chair review">
-        <ol className="space-y-4 text-sm">
-          {items.map((it, i) => (
-            <li key={it.item} className="flex gap-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style={{ background: SLATE }}>{i + 1}</div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-slate-700">{it.item}</div>
-                  <Chip tone={statusTone(it.status)}>{it.status === "approved" ? "Approved by chair" : "Removed by chair"}</Chip>
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5">Submitted by {it.by}</div>
-                {it.comment && (
-                  <div className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
-                    <MessageSquare size={13} className="mt-0.5 shrink-0" /> {it.comment}
-                  </div>
-                )}
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: SLATE }}>
-                  <Paperclip size={12} /> {it.file}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </Card>
-      <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200">
-        <Ban size={14} className="mt-0.5 shrink-0" style={{ color: GOLD }} />
-        The chair has final authority to approve, edit, merge, or remove any submitted item — only approved items reach the finalized agenda that gets distributed with the date, time, and venue.
-      </div>
-    </>
-  );
-}
-
 function OrgStructure() {
   const bof = [
     ["Board of Faculty — Engineering & Applied Sciences", [
@@ -622,6 +170,34 @@ function OrgStructure() {
           ))}
         </div>
       </Card>
+
+      <SectionHeader eyebrow="Governance" title="Role-Based Permissions" desc="What each role can do at each stage of the meeting and approval workflow." />
+      <Card>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-slate-400 text-xs">
+              <th className="pb-2">Role</th><th className="pb-2">Scope</th><th className="pb-2 text-center">Approve</th><th className="pb-2 text-center">Route</th><th className="pb-2 text-center">Final</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["Vice Chancellor", "Final approval authority", true, true, true],
+              ["Dean", "Faculty-level review & comments", true, true, false],
+              ["HOD", "Schedules meetings, sets agenda", true, false, false],
+              ["Faculty / BOS member", "Attends, comments, votes", false, false, false],
+            ].map(([r, s, a, ro, f]) => (
+              <tr key={r} className="border-t border-slate-100">
+                <td className="py-2 font-medium" style={{ color: NAVY }}>{r}</td>
+                <td className="py-2 text-slate-500">{s}</td>
+                <td className="py-2 text-center">{a ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
+                <td className="py-2 text-center">{ro ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
+                <td className="py-2 text-center">{f ? <CheckCircle2 size={16} className="inline text-emerald-600" /> : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
       <div className="mt-4 flex items-start gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200">
         <Landmark size={14} className="mt-0.5 shrink-0" style={{ color: SLATE }} />
         Reflects DHA Suffa University's official faculty, department, and program structure at the Main Campus.
@@ -734,7 +310,7 @@ function Approval() {
 
   return (
     <>
-      <SectionHeader eyebrow="Module 04" title="Approval Routing" desc="Agenda items submitted by members, awaiting the chair's decision. Approving or rejecting here updates the record immediately." />
+      <SectionHeader eyebrow="Module 03" title="Approval Routing" desc="Agenda items submitted by members, awaiting the chair's decision. Approving or rejecting here updates the record immediately." />
       <Card title="Pending approvals">
         {loading && <p className="text-sm text-slate-400">Loading pending items…</p>}
         {!loading && errorMsg && (
@@ -789,7 +365,7 @@ function Capture() {
   ];
   return (
     <>
-      <SectionHeader eyebrow="Module 05" title="Live Meeting Capture & Attendance" desc="Chair initiates the session; the system records audio/video and logs attendance automatically for face-to-face and online participants." />
+      <SectionHeader eyebrow="Module 04" title="Live Meeting Capture & Attendance" desc="Chair initiates the session; the system records audio/video and logs attendance automatically for face-to-face and online participants." />
       <Card className="mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {["Dean, Mgmt Sciences", "HOD, BBA", "Azam Khan", "Dr. Sana (Online)"].map(name => (
@@ -843,7 +419,7 @@ function Transcription() {
   ];
   return (
     <>
-      <SectionHeader eyebrow="Module 06" title="AI Transcription, Speaker ID & Voice Commands" desc="Speech-to-text converts the recording live, identifies who is speaking (like Zoom's active-speaker view), and responds to in-meeting voice commands." />
+      <SectionHeader eyebrow="Module 05" title="AI Transcription, Speaker ID & Voice Commands" desc="Speech-to-text converts the recording live, identifies who is speaking (like Zoom's active-speaker view), and responds to in-meeting voice commands." />
       <Card>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#2E7D5B" }}>
@@ -889,7 +465,7 @@ function Transcription() {
 function Minutes() {
   return (
     <>
-      <SectionHeader eyebrow="Module 07" title="Minutes & Resolution Generator" desc="AI drafts the structured minutes and final resolution from the transcript for Dean/HOD sign-off." />
+      <SectionHeader eyebrow="Module 06" title="Minutes & Resolution Generator" desc="AI drafts the structured minutes and final resolution from the transcript for Dean/HOD sign-off." />
       <Card>
         <div className="text-xs text-slate-400 mb-2">Board of Studies — BBA Program · 28 Jul 2026</div>
         <div className="text-sm text-slate-700 space-y-2 mb-5">
@@ -985,7 +561,7 @@ function FollowUp() {
 
   return (
     <>
-      <SectionHeader eyebrow="Module 08" title="Follow-up & Action Tracker" desc="Open items from a resolution, tracked until they're closed out." />
+      <SectionHeader eyebrow="Module 07" title="Follow-up & Action Tracker" desc="Open items from a resolution, tracked until they're closed out." />
       <Card title="Add an action item" className="mb-4">
         <div className="space-y-3 text-sm">
           <div>
@@ -1103,7 +679,7 @@ function ArchiveView() {
 
   return (
     <>
-      <SectionHeader eyebrow="Module 09" title="Searchable Historical Archive" desc="Ask a plain question years later — the matching meeting, date, and resolution comes back instantly." />
+      <SectionHeader eyebrow="Module 08" title="Searchable Historical Archive" desc="Ask a plain question years later — the matching meeting, date, and resolution comes back instantly." />
       <Card>
         <div className="flex items-center gap-2 border rounded-full px-4 py-2.5 border-slate-200 mb-3">
           <Search size={16} className="text-slate-400" />
@@ -1171,7 +747,7 @@ function ArchiveView() {
 function Insights() {
   return (
     <>
-      <SectionHeader eyebrow="Module 10" title="AI Decision Support" desc="A second AI layer reads across meetings to flag patterns before senior management approves." />
+      <SectionHeader eyebrow="Module 09" title="AI Decision Support" desc="A second AI layer reads across meetings to flag patterns before senior management approves." />
       <div className="grid md:grid-cols-3 gap-4">
         {[
           ["No conflict detected", "This resolution does not contradict any prior BOS decision on record.", "green", ShieldCheck],
@@ -1246,7 +822,7 @@ function Stack() {
 }
 
 const SCREENS = {
-  dashboard: Dashboard, orgstructure: OrgStructure, hierarchy: Hierarchy, scheduling: Scheduling, agenda: AgendaBuilder,
+  dashboard: Dashboard, orgstructure: OrgStructure, scheduling: Scheduling, agenda: AgendaBuilder,
   approval: Approval, capture: Capture, transcription: Transcription, minutes: Minutes,
   followup: FollowUp, archive: ArchiveView, insights: Insights,
 };
