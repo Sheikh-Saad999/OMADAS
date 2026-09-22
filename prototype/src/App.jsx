@@ -160,31 +160,38 @@ function Hierarchy() {
       {
         name: "Board of Faculty — Engineering & Applied Sciences", level: "Board of Faculty",
         children: [
-          { name: "Dept. of Civil Engineering", level: "Department" },
-          { name: "Dept. of Electrical Engineering", level: "Department" },
-          { name: "Dept. of Mechanical Engineering", level: "Department" },
+          { name: "BE Civil Engineering", level: "Program" },
+          { name: "BE Electrical Engineering", level: "Program" },
+          { name: "BE Mechanical Engineering", level: "Program" },
+          { name: "BS Computer Engineering Technology", level: "Program" },
         ],
       },
       {
         name: "Board of Faculty — Computing & Information Technology", level: "Board of Faculty",
         children: [
-          { name: "Dept. of Computer Science", level: "Department" },
-          { name: "Dept. of Software Engineering", level: "Department" },
+          { name: "BS Computer Science", level: "Program" },
+          { name: "BS Computer Engineering", level: "Program" },
+          { name: "BS Software Engineering", level: "Program" },
+          { name: "BS Cyber Security", level: "Program" },
+          { name: "BS Data Science", level: "Program" },
+          { name: "BS Artificial Intelligence", level: "Program" },
         ],
       },
       {
         name: "Board of Faculty — Management Sciences", level: "Board of Faculty",
         children: [
-          { name: "Dept. of Business Administration", level: "Department" },
-          { name: "Dept. of Business Analytics & Programming", level: "Department" },
-          { name: "Dept. of Accounting & Finance", level: "Department" },
+          { name: "BBA", level: "Program" },
+          { name: "BS Accounting & Finance", level: "Program" },
+          { name: "BS Business Analytics & Programming", level: "Program" },
         ],
       },
       {
         name: "Board of Faculty — Humanities & Social Sciences", level: "Board of Faculty",
         children: [
-          { name: "Dept. of English & Media Studies", level: "Department" },
-          { name: "Dept. of Psychology", level: "Department" },
+          { name: "BS Psychology", level: "Program" },
+          { name: "BS International Relations", level: "Program" },
+          { name: "BS English", level: "Program" },
+          { name: "MPhil Psychology", level: "Program" },
         ],
       },
     ],
@@ -523,10 +530,10 @@ function AgendaBuilder() {
 
 function OrgStructure() {
   const bof = [
-    ["Faculty of Engineering & Applied Sciences", ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering"]],
-    ["Faculty of Computing & Information Technology", ["Computer Science", "Software Engineering", "Data Sciences", "Cyber Security & AI"]],
-    ["Faculty of Management Sciences", ["Business Administration (BBA/MBA)", "Business Analytics & Programming", "Accounting & Finance"]],
-    ["Faculty of Humanities & Social Sciences", ["English & Media Studies", "Psychology", "International Relations"]],
+    ["Faculty of Engineering & Applied Sciences", ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Computer Engineering Technology"]],
+    ["Faculty of Computing & Information Technology", ["Computer Science", "Computer Engineering", "Software Engineering", "Cyber Security", "Data Science", "Artificial Intelligence"]],
+    ["Faculty of Management Sciences", ["BBA", "Accounting & Finance", "Business Analytics & Programming"]],
+    ["Faculty of Humanities & Social Sciences", ["Psychology", "International Relations", "English"]],
   ];
   return (
     <>
