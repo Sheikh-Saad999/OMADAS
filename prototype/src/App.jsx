@@ -154,97 +154,70 @@ function Hierarchy() {
     ["Faculty / BOS member", "Attends, comments, votes", false, false, false],
   ];
 
-  const [nodes, setNodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [form, setForm] = useState({ name: "", level: "", parent: "" });
-  const [saving, setSaving] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/get-hierarchy");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || "Failed to load hierarchy");
-      setNodes(data.nodes || []);
-    } catch (err) {
-      setErrorMsg(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const tree = {
+    name: "Academic Council", level: "Academic Council",
+    children: [
+      {
+        name: "Board of Faculty — Engineering & Applied Sciences", level: "Board of Faculty",
+        children: [
+          { name: "Dept. of Civil Engineering", level: "Department" },
+          { name: "Dept. of Electrical Engineering", level: "Department" },
+          { name: "Dept. of Mechanical Engineering", level: "Department" },
+        ],
+      },
+      {
+        name: "Board of Faculty — Computing & Information Technology", level: "Board of Faculty",
+        children: [
+          { name: "Dept. of Computer Science", level: "Department" },
+          { name: "Dept. of Software Engineering", level: "Department" },
+        ],
+      },
+      {
+        name: "Board of Faculty — Management Sciences", level: "Board of Faculty",
+        children: [
+          { name: "Dept. of Business Administration", level: "Department" },
+          { name: "Dept. of Business Analytics & Programming", level: "Department" },
+          { name: "Dept. of Accounting & Finance", level: "Department" },
+        ],
+      },
+      {
+        name: "Board of Faculty — Humanities & Social Sciences", level: "Board of Faculty",
+        children: [
+          { name: "Dept. of English & Media Studies", level: "Department" },
+          { name: "Dept. of Psychology", level: "Department" },
+        ],
+      },
+    ],
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
-
-  const submit = async () => {
-    if (!form.name.trim()) {
-      setErrorMsg("Name is required.");
-      return;
-    }
-    setSaving(true);
-    setErrorMsg("");
-    try {
-      const res = await fetch("/api/add-hierarchy-node", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || "Failed to add node");
-      setForm({ name: "", level: "", parent: "" });
-      setShowAdd(false);
-      await load();
-    } catch (err) {
-      setErrorMsg(err.message);
-    } finally {
-      setSaving(false);
-    }
+  const StaticTreeNode = ({ node, depth }) => {
+    const styles = [
+      { background: NAVY, color: "white", fontWeight: 500 },
+      { border: `1px solid ${SLATE}`, color: SLATE, background: "white" },
+      { background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#334155" },
+    ];
+    const style = styles[Math.min(depth, styles.length - 1)];
+    return (
+      <div>
+        <div className="rounded-lg px-3 py-2 text-sm" style={{ marginLeft: depth * 20, ...style }}>
+          {node.name} <span className="opacity-60 text-xs">· {node.level}</span>
+        </div>
+        {(node.children || []).map((child) => (
+          <div key={child.name} className="mt-2">
+            <StaticTreeNode node={child} depth={depth + 1} />
+          </div>
+        ))}
+      </div>
+    );
   };
-
-  const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
-  const childrenOf = {};
-  nodes.forEach((n) => {
-    const key = n.parent ? norm(n.parent) : "__root__";
-    if (!childrenOf[key]) childrenOf[key] = [];
-    childrenOf[key].push(n);
-  });
-  const roots = nodes.filter((n) => !n.parent || !nodes.some((p) => norm(p.name) === norm(n.parent)));
 
   return (
     <>
-      <SectionHeader eyebrow="Module 01" title="User & Hierarchy Management" desc="Mirrors the university's real structure so permissions and routing follow the actual chain of command." />
+      <SectionHeader eyebrow="Module 01" title="User & Hierarchy Management" desc="Mirrors DHA Suffa University's real governance structure so permissions and routing follow the actual chain of command." />
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Organizational tree">
-          {loading && <p className="text-sm text-slate-400">Loading…</p>}
-          {errorMsg && (
-            <div className="rounded-lg border p-3 text-xs mb-3" style={{ borderColor: "#F3C9C2", background: "#FBE9E7", color: "#B23A2E" }}>{errorMsg}</div>
-          )}
-          {!loading && (
-            <div className="space-y-2">
-              {roots.map((root) => (
-                <TreeNode key={root.id} node={root} childrenOf={childrenOf} depth={0} />
-              ))}
-            </div>
-          )}
-          <div className="mt-4 pt-3 border-t border-slate-100">
-            {!showAdd ? (
-              <button onClick={() => setShowAdd(true)} className="text-xs font-medium" style={{ color: SLATE }}>+ Add a node</button>
-            ) : (
-              <div className="space-y-2 text-sm">
-                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.name} onChange={update("name")} placeholder="Name, e.g. Dept. of Computer Science" />
-                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.level} onChange={update("level")} placeholder="Level, e.g. Department" />
-                <input className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm" value={form.parent} onChange={update("parent")} placeholder="Parent's exact name, e.g. Board of Faculty — Computing & IT" />
-                <button onClick={submit} disabled={saving} className="text-xs font-medium px-3 py-1.5 rounded-full text-white disabled:opacity-60" style={{ background: NAVY }}>
-                  {saving ? "Saving…" : "Add node"}
-                </button>
-              </div>
-            )}
+          <div className="space-y-2">
+            <StaticTreeNode node={tree} depth={0} />
           </div>
         </Card>
         <Card title="Role-based permissions">
