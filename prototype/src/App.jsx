@@ -4,8 +4,9 @@ import {
   FileSignature, ClipboardCheck, Archive, Sparkles, Network, Cpu, Search,
   CheckCircle2, XCircle, Clock3, ChevronRight, Circle, PlayCircle, Send, MessageSquare,
   ShieldCheck, Building2, Landmark, Paperclip, Ban, Volume2, Workflow, DollarSign,
-  Mail, ListChecks
+  Mail, ListChecks, Square
 } from "lucide-react";
+import { CaptureProvider, useCapture } from "./CaptureContext.jsx";
 
 const NAVY = "#81181C";
 const SLATE = "#6B4A42";
@@ -651,7 +652,74 @@ function Approval() {
   );
 }
 
+function fmtClock(s) {
+  const total = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function MeetingSelect({ disabled }) {
+  const { meetingId, setMeetingId } = useCapture();
+  const [meetings, setMeetings] = useState([]);
+  const [state, setState] = useState("loading");
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/get-meetings")
+      .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (!alive) return;
+        if (!ok) throw new Error();
+        setMeetings(data.meetings || []);
+        setState("ready");
+      })
+      .catch(() => alive && setState("error"));
+    return () => { alive = false; };
+  }, []);
+
+  const placeholder =
+    state === "loading" ? "Loading meetings…" : state === "error" ? "Meetings unavailable" : "Select a meeting";
+
+  return (
+    <div>
+      <label className="text-xs font-medium text-slate-400 block mb-1">Meeting</label>
+      <select
+        value={meetingId}
+        disabled={disabled}
+        onChange={(e) => setMeetingId(e.target.value)}
+        className="w-full text-sm rounded-lg border border-slate-200 px-3 py-2 bg-white"
+        style={{ color: NAVY }}
+      >
+        <option value="">{placeholder}</option>
+        {meetings.map((m) => (
+          <option key={m.id} value={m.id}>{m.name}{m.date ? ` · ${m.date}` : ""}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ErrorNotice() {
+  const { error, dismissError, failed, retryFailed } = useCapture();
+  if (!error) return null;
+  return (
+    <div className="mt-4 rounded-lg px-3 py-2 text-sm flex items-start justify-between gap-3" style={{ background: "#FBE9E7", color: "#B23A2E" }}>
+      <span>{error}</span>
+      <span className="flex gap-3 shrink-0 text-xs font-semibold">
+        {failed > 0 && <button onClick={retryFailed}>Retry ({failed})</button>}
+        <button onClick={dismissError}>Dismiss</button>
+      </span>
+    </div>
+  );
+}
+
 function Capture() {
+  const { status, elapsed, level, pending, start, stop, lines, saveState } = useCapture();
+  const recording = status === "recording";
   const attendance = [
     ["Dean, Mgmt Sciences", "Face-to-face", "11:02 AM", true],
     ["HOD, BBA", "Face-to-face", "11:00 AM", true],
@@ -659,27 +727,60 @@ function Capture() {
     ["Dr. Sana", "Online", "11:01 AM", true],
     ["Junaid Ali", "Online", "—", false],
   ];
+
+  const begin = () => {
+    if (lines.length && saveState !== "saved" &&
+        !window.confirm("Starting a new session will replace the current unsaved transcript. Continue?")) return;
+    start();
+  };
+
   return (
     <>
-      <SectionHeader eyebrow="Module 04" title="Live Meeting Capture & Attendance" desc="Chair initiates the session; the system records audio/video and logs attendance automatically for face-to-face and online participants." />
+      <SectionHeader eyebrow="Module 04" title="Live Meeting Capture & Attendance" desc="The Chair starts the session and the system captures the meeting audio, transcribing it as the discussion progresses. Attendance is logged on check-in." />
       <Card className="mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {["Dean, Mgmt Sciences", "HOD, BBA", "Azam Khan", "Dr. Sana (Online)"].map(name => (
-            <div key={name} className="aspect-video rounded-lg flex items-center justify-center text-white text-xs font-medium" style={{ background: NAVY }}>
-              {name}
-            </div>
-          ))}
+        <div className="grid md:grid-cols-2 gap-4 mb-5">
+          <MeetingSelect disabled={recording} />
+          <div className="flex items-end">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Audio is processed in short segments and is never stored. The transcript appears live under
+              "05 · AI Transcription".
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <PlayCircle style={{ color: "#C0392B" }} />
-          <div className="flex-1 h-8 rounded-full bg-slate-100 flex items-center px-3 gap-0.5 overflow-hidden">
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={recording ? stop : begin}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white shrink-0"
+            style={{ background: recording ? "#C0392B" : NAVY }}
+          >
+            {recording ? <><Square size={14} fill="#fff" /> Stop session</> : <><Mic size={15} /> Start session</>}
+          </button>
+
+          <div className="flex-1 h-10 rounded-full bg-slate-100 flex items-center justify-center px-3 gap-0.5 overflow-hidden">
             {Array.from({ length: 40 }).map((_, i) => (
-              <div key={i} className="w-1 rounded-full" style={{ height: `${8 + (i * 37) % 20}px`, background: SLATE, opacity: 0.6 }} />
+              <div
+                key={i}
+                className="w-1 rounded-full"
+                style={{
+                  height: `${recording ? Math.max(4, Math.round(level * 30 * (0.45 + 0.55 * Math.abs(Math.sin(i * 1.7))))) : 4}px`,
+                  background: SLATE,
+                  opacity: 0.6,
+                  transition: "height 80ms linear",
+                }}
+              />
             ))}
           </div>
-          <Chip tone="red">● Recording 32:14</Chip>
+
+          {recording
+            ? <Chip tone="red">● Recording {fmtClock(elapsed)}</Chip>
+            : pending > 0
+              ? <Chip tone="gold">Finishing transcript…</Chip>
+              : <Chip tone="slate">Ready</Chip>}
         </div>
+        <ErrorNotice />
       </Card>
+
       <Card title="Attendance — auto-logged on check-in">
         <table className="w-full text-sm">
           <thead>
@@ -705,54 +806,149 @@ function Capture() {
   );
 }
 
+function speakerBadge(label) {
+  const m = /^speaker\s*(\d+)$/i.exec(label || "");
+  if (m) return `S${m[1]}`;
+  return (label || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
 function Transcription() {
-  const [translated, setTranslated] = useState(true);
-  const [voiceCmd, setVoiceCmd] = useState(false);
-  const lines = [
-    ["Azam Khan", translated ? "I think the internship should be made mandatory for BBA students." : "Mera khayal hai internship ko BBA students k liye mandatory kr dena chahiye.", true],
-    ["Dr. Sana", translated ? "Agreed, but we need at least one semester's notice for students." : "Agreed, lekin students ko kam az kam ek semester ka notice dena hoga.", false],
-    ["HOD, BBA", translated ? "Let's finalize this as a resolution for the Fall 2026 intake." : "Chalo isay Fall 2026 intake k liye resolution bana kr finalize kr detay hain.", false],
-  ];
+  const {
+    lines, status, pending, nameOf, renameSpeaker, meetingId, saveState, saveToMeeting, reset,
+  } = useCapture();
+  const [showEnglish, setShowEnglish] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState("");
+  const [speakingId, setSpeakingId] = useState(null);
+
+  const recording = status === "recording";
+  const palette = [SLATE, NAVY, "#8A6D1F", "#2E7D5B"];
+  const speakerOrder = [...new Set(lines.map((l) => l.speaker))];
+  const lastSpeaker = lines.length ? lines[lines.length - 1].speaker : null;
+
+  const speak = (line) => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(line.english);
+    utterance.lang = "en-US";
+    utterance.onend = () => setSpeakingId(null);
+    setSpeakingId(line.id);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const commitRename = (label) => {
+    renameSpeaker(label, draft);
+    setEditing(null);
+  };
+
+  const saveLabel =
+    saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to meeting record" : "Save to meeting record";
+
+  const clearAll = () => {
+    if (saveState === "saved" || window.confirm("Discard this transcript? It has not been saved to a meeting record.")) reset();
+  };
+
   return (
     <>
-      <SectionHeader eyebrow="Module 05" title="AI Transcription, Speaker ID & Voice Commands" desc="Speech-to-text converts the recording live, identifies who is speaking (like Zoom's active-speaker view), and responds to in-meeting voice commands." />
+      <SectionHeader eyebrow="Module 05" title="AI Transcription, Speaker ID & Read-back" desc="Speech-to-text converts the meeting audio, separates the speakers, and normalises mixed Urdu and English into one transcript. Any line can be read back aloud." />
       <Card>
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#2E7D5B" }}>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live speaker: Azam Khan
+            {recording ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live{lastSpeaker ? ` speaker: ${nameOf(lastSpeaker)}` : " — listening"}
+              </>
+            ) : pending > 0 ? (
+              <span style={{ color: "#8A6D1F" }}>Transcribing the final segment…</span>
+            ) : (
+              <span className="text-slate-400">{lines.length ? `${lines.length} lines` : "No active session"}</span>
+            )}
           </div>
-          <button onClick={() => setTranslated(!translated)} className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ background: "#F3E4D6", color: SLATE }}>
-            {translated ? "Show original (Roman Urdu)" : "Show translated (English)"}
-          </button>
-        </div>
-        <div className="space-y-4 mb-4">
-          {lines.map(([speaker, text, speaking], i) => (
-            <div key={i} className="flex gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                style={{ background: SLATE, boxShadow: speaking ? "0 0 0 3px #2E7D5B55" : "none" }}
-              >
-                {speaker.split(" ").map(w => w[0]).join("").slice(0,2)}
-              </div>
-              <div className={voiceCmd && i === 1 ? "rounded-lg bg-amber-50 border border-dashed px-2 py-1 -ml-2" : ""} style={voiceCmd && i === 1 ? { borderColor: GOLD } : {}}>
-                <div className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                  {speaker} {speaking && <Chip tone="green">speaking now</Chip>}
-                  {voiceCmd && i === 1 && <span className="text-[10px] font-semibold" style={{ color: "#8A6D1F" }}>← line 2 (read aloud)</span>}
-                </div>
-                <div className="text-sm text-slate-700">{text}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-slate-100 pt-3">
           <button
-            onClick={() => setVoiceCmd(!voiceCmd)}
-            className="w-full flex items-center justify-center gap-2 text-sm font-medium rounded-lg py-2.5"
-            style={{ background: voiceCmd ? "#F6EFDC" : "#F6EDE3", color: voiceCmd ? "#8A6D1F" : SLATE }}
+            onClick={() => setShowEnglish(!showEnglish)}
+            className="text-xs px-3 py-1.5 rounded-full font-medium"
+            style={{ background: "#F3E4D6", color: SLATE }}
           >
-            <Mic size={15} /> {voiceCmd ? '"Read line number 2" — AI is reading it back now' : 'Try voice command: "Read line number 2"'}
+            {showEnglish ? "Show original (Roman Urdu)" : "Show translated (English)"}
           </button>
         </div>
+
+        {lines.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
+            No transcript yet. Start a session in "04 · Live Meeting Capture" and the conversation will appear here.
+          </div>
+        ) : (
+          <div className="space-y-4 mb-4">
+            {lines.map((line, i) => {
+              const idx = speakerOrder.indexOf(line.speaker);
+              const name = nameOf(line.speaker);
+              return (
+                <div key={line.id} className="flex gap-3">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
+                    style={{ background: palette[idx % palette.length] }}
+                  >
+                    {speakerBadge(name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-slate-400 flex items-center gap-2">
+                      <span className="text-slate-300">#{i + 1}</span>
+                      {editing === line.speaker ? (
+                        <input
+                          autoFocus
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          onBlur={() => commitRename(line.speaker)}
+                          onKeyDown={(e) => e.key === "Enter" && commitRename(line.speaker)}
+                          className="border border-slate-200 rounded px-1.5 py-0.5 text-xs"
+                          style={{ color: NAVY }}
+                        />
+                      ) : (
+                        <button
+                          title="Click to rename this speaker"
+                          onClick={() => { setEditing(line.speaker); setDraft(name === line.speaker ? "" : name); }}
+                          className="underline decoration-dotted underline-offset-2"
+                        >
+                          {name}
+                        </button>
+                      )}
+                      <span className="text-slate-300">{fmtClock(line.start)}</span>
+                      <button
+                        title="Read this line aloud"
+                        onClick={() => speak(line)}
+                        className="ml-auto p-1 rounded"
+                        style={{ color: speakingId === line.id ? "#8A6D1F" : "#94a3b8" }}
+                      >
+                        <Volume2 size={14} />
+                      </button>
+                    </div>
+                    <div className="text-sm text-slate-700">{showEnglish ? line.english : line.original}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <ErrorNotice />
+
+        {lines.length > 0 && (
+          <div className="border-t border-slate-100 pt-4 mt-4 grid md:grid-cols-[1fr_auto_auto] gap-3 items-end">
+            <MeetingSelect disabled={recording} />
+            <button
+              onClick={saveToMeeting}
+              disabled={!meetingId || recording || saveState === "saving" || saveState === "saved"}
+              className="text-sm font-semibold px-4 py-2 rounded-lg text-white disabled:opacity-40"
+              style={{ background: NAVY }}
+            >
+              {saveLabel}
+            </button>
+            <button onClick={clearAll} disabled={recording} className="text-sm px-4 py-2 rounded-lg disabled:opacity-40" style={{ background: "#F3E4D6", color: SLATE }}>
+              Clear
+            </button>
+          </div>
+        )}
       </Card>
     </>
   );
@@ -1123,7 +1319,7 @@ const SCREENS = {
   followup: FollowUp, archive: ArchiveView, insights: Insights,
 };
 
-export default function App() {
+function AppShell() {
   const [active, setActive] = useState("dashboard");
   const Screen = SCREENS[active];
   return (
@@ -1169,5 +1365,13 @@ export default function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <CaptureProvider>
+      <AppShell />
+    </CaptureProvider>
   );
 }
