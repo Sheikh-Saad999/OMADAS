@@ -669,7 +669,7 @@ function MeetingSelect({ disabled }) {
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/get-meetings")
+    fetch("/api/meeting-ai?op=meetings")
       .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
       .then(({ ok, data }) => {
         if (!alive) return;
@@ -990,7 +990,7 @@ function FollowUp() {
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch("/api/get-followups");
+      const res = await fetch("/api/followups?op=get");
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message || "Failed to load follow-ups");
       setItems(data.items || []);
@@ -1015,7 +1015,7 @@ function FollowUp() {
     setSaving(true);
     setErrorMsg("");
     try {
-      const res = await fetch("/api/create-followup", {
+      const res = await fetch("/api/followups?op=create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -1034,7 +1034,7 @@ function FollowUp() {
   const markDone = async (id) => {
     setActingOn(id);
     try {
-      const res = await fetch("/api/update-followup-status", {
+      const res = await fetch("/api/followups?op=status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pageId: id, status: "Done" }),

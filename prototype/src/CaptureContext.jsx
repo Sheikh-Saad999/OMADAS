@@ -41,7 +41,7 @@ export function CaptureProvider({ children }) {
     let lastErr;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const res = await fetch("/api/transcribe", {
+        const res = await fetch("/api/meeting-ai?op=transcribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ audioBase64: seg.base64, mimeType: seg.mimeType, previousLines }),
@@ -150,7 +150,7 @@ export function CaptureProvider({ children }) {
     setSaveState("saving");
     setError("");
     try {
-      const res = await fetch("/api/save-transcript", {
+      const res = await fetch("/api/meeting-ai?op=save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
