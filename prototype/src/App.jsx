@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard, CalendarClock, ListTree, GitBranch, Video, Mic,
   FileSignature, ClipboardCheck, Archive, Sparkles, Network, Cpu, Search,
   CheckCircle2, XCircle, Clock3, ChevronRight, Circle, PlayCircle, Send, MessageSquare,
   ShieldCheck, Building2, Landmark, Paperclip, Ban, Volume2, Workflow, DollarSign,
-  Mail, ListChecks, Square
+  Mail, ListChecks, Square, Video as VideoIcon, VideoOff, MicOff, PhoneOff
 } from "lucide-react";
 import { CaptureProvider, useCapture } from "./CaptureContext.jsx";
 
@@ -700,9 +700,119 @@ function ErrorNotice() {
   );
 }
 
+function VideoTile({ p, big }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = p.videoTrack ? new MediaStream([p.videoTrack]) : null;
+  }, [p.videoTrack]);
+  return (
+    <div className={`relative rounded-lg overflow-hidden bg-slate-800 ${big ? "aspect-video" : "aspect-square"}`}>
+      {p.videoTrack ? (
+        <video ref={ref} autoPlay playsInline muted={p.local} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-white text-lg font-semibold" style={{ background: SLATE }}>
+          {(p.name || "?").slice(0, 2).toUpperCase()}
+        </div>
+      )}
+      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1.5 bg-black/50 rounded-full px-2 py-0.5">
+        <span className="text-white text-xs">{p.name}</span>
+        {!p.audioOn && <MicOff size={11} className="text-red-300" />}
+      </div>
+    </div>
+  );
+}
+
+function VideoMeetingPanel() {
+  const {
+    videoState, roomUrl, micOn, camOn, participants,
+    startVideoMeeting, leaveVideoMeeting, toggleMic, toggleCam, elapsed, pending,
+  } = useCapture();
+  const [name, setName] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(roomUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked; the link is still shown below */
+    }
+  };
+
+  if (videoState === "idle" || videoState === "error") {
+    return (
+      <Card className="mb-4">
+        <div className="max-w-sm">
+          <label className="text-xs font-medium text-slate-400 block mb-1">Your name (shown to other participants)</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Dr. Sana Malik"
+            className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm mb-3"
+          />
+          <button
+            onClick={() => startVideoMeeting(name.trim())}
+            disabled={!name.trim()}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: NAVY }}
+          >
+            <Video size={15} /> Start video meeting
+          </button>
+        </div>
+        <ErrorNotice />
+      </Card>
+    );
+  }
+
+  if (videoState === "creating") {
+    return (
+      <Card className="mb-4">
+        <p className="text-sm text-slate-400">Setting up the video room…</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <Chip tone="red">● In meeting {fmtClock(elapsed)}</Chip>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <input readOnly value={roomUrl} className="flex-1 min-w-0 text-xs border rounded-lg px-3 py-1.5 border-slate-200 text-slate-500 bg-slate-50" />
+          <button onClick={copyLink} className="text-xs font-medium px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#F3E4D6", color: SLATE }}>
+            {copied ? "Copied" : "Copy invite link"}
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-slate-400 mb-4">
+        Share the link above with anyone joining online. They open it directly and get mic/camera controls automatically — no login needed.
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        {participants.map((p) => <VideoTile key={p.id} p={p} />)}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button onClick={toggleMic} className="w-11 h-11 rounded-full flex items-center justify-center text-white" style={{ background: micOn ? SLATE : "#C0392B" }} title={micOn ? "Mute" : "Unmute"}>
+          {micOn ? <Mic size={17} /> : <MicOff size={17} />}
+        </button>
+        <button onClick={toggleCam} className="w-11 h-11 rounded-full flex items-center justify-center text-white" style={{ background: camOn ? SLATE : "#C0392B" }} title={camOn ? "Turn camera off" : "Turn camera on"}>
+          {camOn ? <VideoIcon size={17} /> : <VideoOff size={17} />}
+        </button>
+        <button onClick={leaveVideoMeeting} className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: "#C0392B" }}>
+          <PhoneOff size={15} /> Leave & end session
+        </button>
+        {pending > 0 && <Chip tone="gold">Finishing transcript…</Chip>}
+      </div>
+      <ErrorNotice />
+    </Card>
+  );
+}
+
 function Capture() {
-  const { status, elapsed, level, pending, start, stop, lines, saveState } = useCapture();
+  const { mode, setMode, status, elapsed, level, pending, start, stop, lines, saveState } = useCapture();
   const recording = status === "recording";
+  const [tab, setTab] = useState(mode);
   const attendance = [
     ["Dean, Mgmt Sciences", "Face-to-face", "11:02 AM", true],
     ["HOD, BBA", "Face-to-face", "11:00 AM", true],
@@ -720,6 +830,24 @@ function Capture() {
   return (
     <>
       <SectionHeader eyebrow="Module 04" title="Live Meeting Capture & Attendance" desc="The Chair starts the session and the system captures the meeting audio, transcribing it as the discussion progresses. Attendance is logged on check-in." />
+
+      <div className="flex gap-2 mb-4">
+        {[["video", "Video meeting"], ["mic", "Mic only (this device)"]].map(([id, label]) => (
+          <button
+            key={id}
+            disabled={recording && mode !== id}
+            onClick={() => setTab(id)}
+            className="text-xs px-3 py-2 rounded-lg font-medium disabled:opacity-30"
+            style={{ background: tab === id ? NAVY : "#F3E4D6", color: tab === id ? "#fff" : SLATE }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "video" ? (
+        <VideoMeetingPanel />
+      ) : (
       <Card className="mb-4">
         <div className="grid md:grid-cols-2 gap-4 mb-5">
           <MeetingSelect disabled={recording} />
@@ -763,6 +891,7 @@ function Capture() {
         </div>
         <ErrorNotice />
       </Card>
+      )}
 
       <Card title="Attendance — auto-logged on check-in">
         <table className="w-full text-sm">

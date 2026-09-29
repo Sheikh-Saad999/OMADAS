@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
-import { createRecorder } from "./recorder.js";
+import { createRecorder, createTrackRecorder } from "./recorder.js";
+import Daily from "@daily-co/daily-js";
 
 // Holds the live-session state above the individual screens, so a recording
 // keeps running (and the transcript keeps growing) while the user switches
@@ -29,6 +30,12 @@ export function CaptureProvider({ children }) {
   const [meetings, setMeetings] = useState([]);
   const [meetingsState, setMeetingsState] = useState("loading"); // loading | ready | error
   const [minutes, setMinutes] = useState(null); // the editable minutes draft (Module 06)
+  const [mode, setMode] = useState("mic"); // 'mic' | 'video' — which capture mode is (or was last) active
+  const [videoState, setVideoState] = useState("idle"); // idle | creating | in-call | error
+  const [roomUrl, setRoomUrl] = useState("");
+  const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+  const [participants, setParticipants] = useState([]);
 
   useEffect(() => {
     let alive = true;
@@ -49,6 +56,9 @@ export function CaptureProvider({ children }) {
   const failedRef = useRef([]);
   const recorderRef = useRef(null);
   const timerRef = useRef(null);
+  const callRef = useRef(null); // the active Daily call object, video mode only
+  const videoCtxRef = useRef(null); // one shared AudioContext for every participant track
+  const trackRecordersRef = useRef(new Map()); // sessionId -> { stop() }
 
   // Segments are processed one at a time, in order, so speaker labels stay consistent.
   async function transcribeSegment(seg) {
@@ -71,9 +81,12 @@ export function CaptureProvider({ children }) {
         }
         if (!res.ok) throw Object.assign(new Error(data.error || "Transcription failed."), { detail: data.detail });
 
+        // In video-meeting mode, seg.speaker is the participant's real name
+        // (the audio was already isolated to just them), so it always wins
+        // over whatever speaker label Gemini guessed.
         const fresh = (data.lines || []).map((l, i) => ({
           id: `${seg.index}-${i}`,
-          speaker: l.speaker,
+          speaker: seg.speaker || l.speaker,
           start: seg.offsetSeconds + parseClock(l.start),
           original: l.original,
           english: l.english,
@@ -125,6 +138,7 @@ export function CaptureProvider({ children }) {
   async function start() {
     if (status !== "idle") return;
     reset();
+    setMode("mic");
     if (!recorderRef.current) {
       recorderRef.current = createRecorder({
         onSegment: enqueue,
@@ -147,6 +161,148 @@ export function CaptureProvider({ children }) {
     clearInterval(timerRef.current);
     recorderRef.current?.stop(); // flushes the final segment into the queue
     setStatus("idle");
+  }
+
+  // ---- Video meeting mode (Module 04, "Video meeting") ----
+  // The Chair's browser joins a Daily.co room headlessly (no Daily UI chrome)
+  // and renders its own tiles. Every participant's audio track is captured
+  // and transcribed separately, tagged with their real name — no speaker
+  // guessing needed. Everyone else just opens the room link; Daily serves its
+  // own ready-made call page there, no app required on their end.
+  function syncParticipants(call) {
+    const all = call.participants();
+    setParticipants(
+      Object.values(all).map((p) => ({
+        id: p.session_id,
+        name: p.local ? "You" : p.user_name || "Guest",
+        local: p.local,
+        audioOn: !!p.audio,
+        videoOn: !!p.video,
+        videoTrack: p.tracks?.video?.state === "playable" ? p.tracks.video.track : null,
+      }))
+    );
+  }
+
+  async function startVideoMeeting(name) {
+    if (videoState !== "idle") return;
+    if (lines.length && saveState !== "saved" &&
+        !window.confirm("Starting a new session will replace the current unsaved transcript. Continue?")) {
+      return;
+    }
+    reset();
+    setMode("video");
+    setVideoState("creating");
+    setError("");
+
+    try {
+      const res = await fetch("/api/meeting-ai?op=room", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || "Could not create the video room."), { detail: data.detail });
+      setRoomUrl(data.url);
+
+      let ctx;
+      try {
+        ctx = new AudioContext();
+      } catch {
+        throw new Error("This browser cannot process audio for transcription.");
+      }
+      videoCtxRef.current = ctx;
+
+      const call = Daily.createCallObject();
+      callRef.current = call;
+
+      const keyFor = (participant) => (participant.local ? "local" : participant.session_id);
+
+      const attach = (participant, track) => {
+        const key = keyFor(participant);
+        if (trackRecordersRef.current.has(key)) return;
+        const label = participant.local ? name || "Chair" : participant.user_name || "Guest";
+        const rec = createTrackRecorder({
+          track,
+          sharedCtx: ctx,
+          participantLabel: label,
+          onSegment: enqueue,
+          onLevel: participant.local ? setLevel : undefined,
+          onError: (e) => setError(e.message || "Recording error."),
+        });
+        trackRecordersRef.current.set(key, rec);
+      };
+      const detach = (participant) => {
+        const key = keyFor(participant);
+        trackRecordersRef.current.get(key)?.stop();
+        trackRecordersRef.current.delete(key);
+      };
+
+      call
+        .on("joined-meeting", () => {
+          setVideoState("in-call");
+          setStatus("recording");
+          timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+          syncParticipants(call);
+          setMicOn(!!call.localAudio());
+          setCamOn(!!call.localVideo());
+        })
+        .on("participant-joined", () => syncParticipants(call))
+        .on("participant-updated", () => syncParticipants(call))
+        .on("participant-left", (ev) => {
+          detach(ev.participant);
+          syncParticipants(call);
+        })
+        .on("track-started", (ev) => {
+          if (ev.type === "audio") attach(ev.participant, ev.track);
+          syncParticipants(call);
+        })
+        .on("track-stopped", (ev) => {
+          if (ev.type === "audio") detach(ev.participant);
+        })
+        .on("error", (ev) => setError(ev.errorMsg || "Video call error."));
+
+      await call.join({ url: data.url, userName: name || "Chair" });
+    } catch (err) {
+      setVideoState("error");
+      const detail = err.detail ? ` (${String(err.detail).slice(0, 180)})` : "";
+      setError((err.message || "Could not start the video meeting.") + detail);
+    }
+  }
+
+  function toggleMic() {
+    const call = callRef.current;
+    if (!call) return;
+    const next = !micOn;
+    call.setLocalAudio(next);
+    setMicOn(next);
+  }
+
+  function toggleCam() {
+    const call = callRef.current;
+    if (!call) return;
+    const next = !camOn;
+    call.setLocalVideo(next);
+    setCamOn(next);
+  }
+
+  async function leaveVideoMeeting() {
+    clearInterval(timerRef.current);
+    trackRecordersRef.current.forEach((r) => r.stop());
+    trackRecordersRef.current.clear();
+    try {
+      await callRef.current?.leave();
+    } catch {
+      /* already gone */
+    }
+    callRef.current?.destroy();
+    callRef.current = null;
+    try {
+      await videoCtxRef.current?.close();
+    } catch {
+      /* already closed */
+    }
+    videoCtxRef.current = null;
+    setParticipants([]);
+    setRoomUrl("");
+    setVideoState("idle");
+    setStatus("idle");
+    setLevel(0);
   }
 
   function retryFailed() {
@@ -201,6 +357,8 @@ export function CaptureProvider({ children }) {
     status, elapsed, level, lines, pending, failed, error,
     meetingId, setMeetingId, speakerNames, nameOf, saveState,
     meetings, meetingsState, minutes, setMinutes,
+    mode, videoState, roomUrl, micOn, camOn, participants,
+    startVideoMeeting, leaveVideoMeeting, toggleMic, toggleCam,
     start, stop, reset, retryFailed, renameSpeaker, saveToMeeting,
     dismissError: () => setError(""),
   };
