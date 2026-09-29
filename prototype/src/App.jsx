@@ -663,26 +663,9 @@ function fmtClock(s) {
 }
 
 function MeetingSelect({ disabled }) {
-  const { meetingId, setMeetingId } = useCapture();
-  const [meetings, setMeetings] = useState([]);
-  const [state, setState] = useState("loading");
-
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/meeting-ai?op=meetings")
-      .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
-      .then(({ ok, data }) => {
-        if (!alive) return;
-        if (!ok) throw new Error();
-        setMeetings(data.meetings || []);
-        setState("ready");
-      })
-      .catch(() => alive && setState("error"));
-    return () => { alive = false; };
-  }, []);
-
+  const { meetingId, setMeetingId, meetings, meetingsState } = useCapture();
   const placeholder =
-    state === "loading" ? "Loading meetings…" : state === "error" ? "Meetings unavailable" : "Select a meeting";
+    meetingsState === "loading" ? "Loading meetings…" : meetingsState === "error" ? "Meetings unavailable" : "Select a meeting";
 
   return (
     <div>
@@ -954,26 +937,300 @@ function Transcription() {
   );
 }
 
+function minutesToText(m, meeting) {
+  const out = [];
+  out.push(`MINUTES OF MEETING${meeting?.name ? ` — ${meeting.name}` : ""}${meeting?.date ? ` (${meeting.date})` : ""}`);
+  if (m.summary) out.push("", m.summary);
+  const disc = m.discussion.filter((d) => d.topic || d.pointsText.trim());
+  if (disc.length) {
+    out.push("", "DISCUSSION");
+    disc.forEach((d) => {
+      out.push(`- ${d.topic}`);
+      d.pointsText.split("\n").map((p) => p.trim()).filter(Boolean).forEach((p) => out.push(`    • ${p}`));
+    });
+  }
+  const decisions = m.decisionsText.split("\n").map((d) => d.trim()).filter(Boolean);
+  if (decisions.length) out.push("", "DECISIONS", ...decisions.map((d) => `- ${d}`));
+  if (m.resolution.trim()) out.push("", "RESOLUTION", m.resolution.trim());
+  const actions = m.actions.filter((a) => a.item.trim());
+  if (actions.length) {
+    out.push("", "ACTION ITEMS");
+    actions.forEach((a) => out.push(`- ${a.item}${a.owner ? ` | Owner: ${a.owner}` : ""}${a.due ? ` | Due: ${a.due}` : ""}`));
+  }
+  return out.join("\n");
+}
+
+const inputCls = "mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm text-slate-700";
+
 function Minutes() {
+  const { lines, nameOf, meetings, meetingId, minutes, setMinutes } = useCapture();
+  const [source, setSource] = useState("live");
+  const [pasted, setPasted] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saveState, setSaveState] = useState("idle"); // idle | saving | saved
+  const [fu, setFu] = useState({ state: "idle", done: 0 }); // idle | adding | added
+  const [copied, setCopied] = useState(false);
+
+  const meeting = meetings.find((m) => m.id === meetingId);
+  const useLive = lines.length > 0 && source === "live";
+
+  const post = async (op, body) => {
+    const res = await fetch(`/api/meeting-ai?op=${op}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || "Request failed."), { detail: data.detail });
+    return data;
+  };
+
+  const explain = (err) => (err.detail ? `${err.message} (${String(err.detail).slice(0, 180)})` : err.message);
+
+  const generate = async () => {
+    if (minutes && !window.confirm("Generating again will replace the current draft. Continue?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const body = useLive
+        ? { lines: lines.map((l) => ({ speaker: nameOf(l.speaker), start: l.start, english: l.english })) }
+        : { text: pasted };
+      const { minutes: m } = await post("minutes", {
+        ...body,
+        meetingName: meeting?.name || "",
+        meetingDate: meeting?.date || "",
+      });
+      setMinutes({
+        summary: m.summary,
+        discussion: m.discussion.map((d) => ({ topic: d.topic, pointsText: d.points.join("\n") })),
+        decisionsText: m.decisions.join("\n"),
+        resolution: m.resolution,
+        actions: m.action_items,
+      });
+      setSaveState("idle");
+      setFu({ state: "idle", done: 0 });
+    } catch (err) {
+      setError(explain(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const edit = (patch) => {
+    setMinutes({ ...minutes, ...patch });
+    setSaveState("idle");
+  };
+  const editTopic = (i, patch) => edit({ discussion: minutes.discussion.map((d, j) => (j === i ? { ...d, ...patch } : d)) });
+  const editAction = (i, patch) => edit({ actions: minutes.actions.map((a, j) => (j === i ? { ...a, ...patch } : a)) });
+
+  const payload = () => ({
+    summary: minutes.summary.trim(),
+    discussion: minutes.discussion
+      .map((d) => ({ topic: d.topic.trim(), points: d.pointsText.split("\n").map((p) => p.trim()).filter(Boolean) }))
+      .filter((d) => d.topic || d.points.length),
+    decisions: minutes.decisionsText.split("\n").map((d) => d.trim()).filter(Boolean),
+    resolution: minutes.resolution.trim(),
+    action_items: minutes.actions.filter((a) => a.item.trim()),
+  });
+
+  const save = async () => {
+    setSaveState("saving");
+    setError("");
+    try {
+      await post("save-minutes", { pageId: meetingId, minutes: payload() });
+      setSaveState("saved");
+    } catch (err) {
+      setSaveState("idle");
+      setError(explain(err));
+    }
+  };
+
+  const sendActions = async () => {
+    const items = minutes.actions.filter((a) => a.item.trim());
+    setFu({ state: "adding", done: 0 });
+    setError("");
+    let done = 0;
+    try {
+      for (const a of items) {
+        const res = await fetch("/api/followups?op=create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item: a.item, owner: a.owner, due: a.due, meeting: meeting?.name || "" }),
+        });
+        if (!res.ok) throw new Error("Could not add an action item to the Follow-up Tracker.");
+        done += 1;
+        setFu({ state: "adding", done });
+      }
+      setFu({ state: "added", done });
+    } catch (err) {
+      setFu({ state: "idle", done });
+      setError(`${err.message} ${done} of ${items.length} were added.`);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(minutesToText(minutes, meeting));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Copying was blocked by the browser.");
+    }
+  };
+
+  const canGenerate = !busy && (useLive || pasted.trim().length >= 40);
+  const actionCount = minutes ? minutes.actions.filter((a) => a.item.trim()).length : 0;
+
   return (
     <>
-      <SectionHeader eyebrow="Module 06" title="Minutes & Resolution Generator" desc="AI drafts the structured minutes and final resolution from the transcript for Dean/HOD sign-off." />
-      <Card>
-        <div className="text-xs text-slate-400 mb-2">Board of Studies — BBA Program · 28 Jul 2026</div>
-        <div className="text-sm text-slate-700 space-y-2 mb-5">
-          <p><strong>Discussed:</strong> Whether internship should be mandatory for BBA students, notice period for implementation.</p>
-          <p><strong>Decision:</strong> Motion passed 5–1 in favor of mandatory internship, effective Fall 2026 intake.</p>
-        </div>
-        <div className="rounded-xl border-2 border-dashed p-4 flex items-center gap-4" style={{ borderColor: GOLD }}>
-          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: GOLD }}>
-            <FileSignature size={22} />
-          </div>
+      <SectionHeader eyebrow="Module 06" title="Minutes & Resolution Generator" desc="AI drafts the structured minutes and final resolution from the transcript. The draft is reviewed and edited before Dean/HOD sign-off." />
+
+      <Card title="1 · Choose the source" className="mb-4">
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <MeetingSelect />
           <div>
-            <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#8A6D1F" }}>Resolution No. 2026-BOS-014</div>
-            <div className="font-serif text-lg" style={{ color: NAVY }}>RESOLVED: Internship is made mandatory for all BBA students, effective Fall 2026.</div>
+            <label className="text-xs font-medium text-slate-400 block mb-1">Transcript source</label>
+            <div className="flex gap-2">
+              {[["live", `Live transcript (${lines.length} lines)`, lines.length === 0], ["paste", "Paste text", false]].map(([id, label, disabled]) => (
+                <button
+                  key={id}
+                  disabled={disabled}
+                  onClick={() => setSource(id)}
+                  className="text-xs px-3 py-2 rounded-lg font-medium disabled:opacity-40"
+                  style={{
+                    background: (id === "live") === useLive ? NAVY : "#F3E4D6",
+                    color: (id === "live") === useLive ? "#fff" : SLATE,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
+        {!useLive && (
+          <textarea
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            rows={7}
+            placeholder="Paste the meeting transcript or your notes here (at least a few sentences)…"
+            className="w-full border rounded-lg px-3 py-2 border-slate-200 outline-none text-sm text-slate-700"
+          />
+        )}
+
+        <button
+          onClick={generate}
+          disabled={!canGenerate}
+          className="mt-4 rounded-lg text-white text-sm py-2.5 px-5 font-medium flex items-center gap-2 disabled:opacity-40"
+          style={{ background: NAVY }}
+        >
+          <FileSignature size={15} /> {busy ? "Drafting minutes…" : minutes ? "Regenerate draft" : "Generate draft minutes"}
+        </button>
+
+        {error && (
+          <div className="mt-4 rounded-lg px-3 py-2 text-sm flex justify-between gap-3" style={{ background: "#FBE9E7", color: "#B23A2E" }}>
+            <span>{error}</span>
+            <button className="text-xs font-semibold shrink-0" onClick={() => setError("")}>Dismiss</button>
+          </div>
+        )}
       </Card>
+
+      {minutes && (
+        <>
+          <div className="mb-4 rounded-lg px-4 py-2.5 text-xs flex items-center gap-2" style={{ background: "#F6EFDC", color: "#8A6D1F" }}>
+            <ShieldCheck size={15} /> AI-generated draft. Check every line against the meeting and edit anything that is wrong before it is signed off.
+          </div>
+
+          <Card title="2 · Review and edit the minutes" className="mb-4">
+            <div className="text-xs text-slate-400 mb-3">
+              {meeting ? `${meeting.name}${meeting.date ? ` · ${meeting.date}` : ""}` : "No meeting selected"}
+            </div>
+
+            <label className="text-xs text-slate-400">Summary</label>
+            <textarea className={inputCls} rows={3} value={minutes.summary} onChange={(e) => edit({ summary: e.target.value })} />
+
+            <div className="mt-5 text-xs text-slate-400">Discussion</div>
+            {minutes.discussion.length === 0 && <p className="text-sm text-slate-400 mt-1">No discussion points were drafted.</p>}
+            <div className="space-y-3 mt-1">
+              {minutes.discussion.map((d, i) => (
+                <div key={i} className="rounded-lg border border-slate-100 p-3">
+                  <input className={inputCls + " font-medium"} value={d.topic} onChange={(e) => editTopic(i, { topic: e.target.value })} placeholder="Topic" />
+                  <textarea className={inputCls} rows={Math.max(2, d.pointsText.split("\n").length)} value={d.pointsText} onChange={(e) => editTopic(i, { pointsText: e.target.value })} placeholder="One point per line" />
+                </div>
+              ))}
+            </div>
+
+            <label className="text-xs text-slate-400 block mt-5">Decisions (one per line)</label>
+            <textarea className={inputCls} rows={Math.max(2, minutes.decisionsText.split("\n").length)} value={minutes.decisionsText} onChange={(e) => edit({ decisionsText: e.target.value })} />
+
+            <div className="rounded-xl border-2 border-dashed p-4 mt-5 flex gap-4" style={{ borderColor: GOLD }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: GOLD }}>
+                <FileSignature size={20} />
+              </div>
+              <div className="flex-1">
+                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#8A6D1F" }}>
+                  Resolution No. — to be assigned by the Secretary
+                </div>
+                <textarea
+                  className="mt-1 w-full border rounded-lg px-3 py-2 border-slate-200 outline-none font-serif text-base"
+                  style={{ color: NAVY }}
+                  rows={2}
+                  value={minutes.resolution}
+                  onChange={(e) => edit({ resolution: e.target.value })}
+                  placeholder="No clear resolution was drafted. Write one if a decision was reached."
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 text-xs text-slate-400">Action items</div>
+            {minutes.actions.length === 0 && <p className="text-sm text-slate-400 mt-1">No action items were drafted.</p>}
+            <div className="space-y-2 mt-1">
+              {minutes.actions.map((a, i) => (
+                <div key={i} className="grid grid-cols-[1fr_9rem_9rem_auto] gap-2 items-center">
+                  <input className={inputCls.replace("mt-1 ", "")} value={a.item} onChange={(e) => editAction(i, { item: e.target.value })} placeholder="Action item" />
+                  <input className={inputCls.replace("mt-1 ", "")} value={a.owner} onChange={(e) => editAction(i, { owner: e.target.value })} placeholder="Owner" />
+                  <input className={inputCls.replace("mt-1 ", "")} value={a.due} onChange={(e) => editAction(i, { due: e.target.value })} placeholder="Due" />
+                  <button className="text-xs text-slate-400 px-2" onClick={() => edit({ actions: minutes.actions.filter((_, j) => j !== i) })}>Remove</button>
+                </div>
+              ))}
+            </div>
+            <button className="text-xs font-medium mt-2" style={{ color: SLATE }} onClick={() => edit({ actions: [...minutes.actions, { item: "", owner: "", due: "" }] })}>
+              + Add action item
+            </button>
+          </Card>
+
+          <Card title="3 · Finalise">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={save}
+                disabled={!meetingId || saveState === "saving" || saveState === "saved"}
+                className="text-sm font-semibold px-4 py-2 rounded-lg text-white disabled:opacity-40"
+                style={{ background: NAVY }}
+              >
+                {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to meeting record" : "Save to meeting record"}
+              </button>
+              <button
+                onClick={sendActions}
+                disabled={actionCount === 0 || fu.state !== "idle"}
+                className="text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-40"
+                style={{ background: "#E4F2EA", color: "#2E7D5B" }}
+              >
+                {fu.state === "adding"
+                  ? `Adding ${fu.done}/${actionCount}…`
+                  : fu.state === "added"
+                    ? `${fu.done} added to Follow-up Tracker`
+                    : `Add ${actionCount} action item${actionCount === 1 ? "" : "s"} to Follow-up Tracker`}
+              </button>
+              <button onClick={copy} className="text-sm px-4 py-2 rounded-lg" style={{ background: "#F3E4D6", color: SLATE }}>
+                {copied ? "Copied" : "Copy as text"}
+              </button>
+            </div>
+            {!meetingId && <p className="text-xs text-slate-400 mt-3">Select a meeting above to save the minutes to its record.</p>}
+          </Card>
+        </>
+      )}
     </>
   );
 }

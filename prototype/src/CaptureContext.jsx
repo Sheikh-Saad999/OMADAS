@@ -26,6 +26,23 @@ export function CaptureProvider({ children }) {
   const [meetingId, setMeetingId] = useState("");
   const [speakerNames, setSpeakerNames] = useState({});
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
+  const [meetings, setMeetings] = useState([]);
+  const [meetingsState, setMeetingsState] = useState("loading"); // loading | ready | error
+  const [minutes, setMinutes] = useState(null); // the editable minutes draft (Module 06)
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/meeting-ai?op=meetings")
+      .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
+      .then(({ ok, data }) => {
+        if (!alive) return;
+        if (!ok) throw new Error();
+        setMeetings(data.meetings || []);
+        setMeetingsState("ready");
+      })
+      .catch(() => alive && setMeetingsState("error"));
+    return () => { alive = false; };
+  }, []);
 
   const linesRef = useRef([]);
   const queueRef = useRef(Promise.resolve());
@@ -52,7 +69,7 @@ export function CaptureProvider({ children }) {
           await sleep(15000);
           continue;
         }
-        if (!res.ok) throw new Error(data.error || "Transcription failed.");
+        if (!res.ok) throw Object.assign(new Error(data.error || "Transcription failed."), { detail: data.detail });
 
         const fresh = (data.lines || []).map((l, i) => ({
           id: `${seg.index}-${i}`,
@@ -86,7 +103,8 @@ export function CaptureProvider({ children }) {
       } catch (err) {
         failedRef.current.push(seg);
         setFailed(failedRef.current.length);
-        setError(err.message || "A segment could not be transcribed.");
+        const detail = err.detail ? ` (${String(err.detail).slice(0, 180)})` : "";
+        setError((err.message || "A segment could not be transcribed.") + detail);
       } finally {
         setPending((p) => p - 1);
       }
@@ -182,6 +200,7 @@ export function CaptureProvider({ children }) {
   const value = {
     status, elapsed, level, lines, pending, failed, error,
     meetingId, setMeetingId, speakerNames, nameOf, saveState,
+    meetings, meetingsState, minutes, setMinutes,
     start, stop, reset, retryFailed, renameSpeaker, saveToMeeting,
     dismissError: () => setError(""),
   };

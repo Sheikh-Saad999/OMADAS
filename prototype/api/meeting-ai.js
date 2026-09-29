@@ -8,14 +8,18 @@
 //   POST /api/meeting-ai?op=transcribe  -> audio segment -> transcript lines
 //   GET  /api/meeting-ai?op=meetings    -> recent meetings for the picker
 //   POST /api/meeting-ai?op=save        -> attach a transcript to a meeting
+//   POST /api/meeting-ai?op=minutes     -> transcript/text -> draft minutes + resolution
+//   POST /api/meeting-ai?op=save-minutes -> attach reviewed minutes to a meeting
 
 import transcribe from "../server/meeting-ai/transcribe.js";
 import meetings from "../server/meeting-ai/meetings.js";
 import save from "../server/meeting-ai/save.js";
+import minutes from "../server/meeting-ai/minutes.js";
+import saveMinutes from "../server/meeting-ai/save-minutes.js";
 
 export const config = { maxDuration: 60 };
 
-const OPS = { transcribe, meetings, save };
+const OPS = { transcribe, meetings, save, minutes, "save-minutes": saveMinutes };
 
 export default async function handler(req, res) {
   const op = req.query?.op;
