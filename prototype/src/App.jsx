@@ -724,7 +724,7 @@ function VideoTile({ p, big }) {
 
 function VideoMeetingPanel() {
   const {
-    videoState, roomUrl, micOn, camOn, participants,
+    videoState, inviteUrl, micOn, camOn, participants,
     startVideoMeeting, leaveVideoMeeting, toggleMic, toggleCam, elapsed, pending,
   } = useCapture();
   const [name, setName] = useState("");
@@ -732,7 +732,7 @@ function VideoMeetingPanel() {
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(roomUrl);
+      await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -778,7 +778,7 @@ function VideoMeetingPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <Chip tone="red">● In meeting {fmtClock(elapsed)}</Chip>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <input readOnly value={roomUrl} className="flex-1 min-w-0 text-xs border rounded-lg px-3 py-1.5 border-slate-200 text-slate-500 bg-slate-50" />
+          <input readOnly value={inviteUrl} className="flex-1 min-w-0 text-xs border rounded-lg px-3 py-1.5 border-slate-200 text-slate-500 bg-slate-50" />
           <button onClick={copyLink} className="text-xs font-medium px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#F3E4D6", color: SLATE }}>
             {copied ? "Copied" : "Copy invite link"}
           </button>

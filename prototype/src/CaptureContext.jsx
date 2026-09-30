@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 import { createRecorder, createTrackRecorder } from "./recorder.js";
-import Daily from "@daily-co/daily-js";
+import { Room, RoomEvent } from "livekit-client";
 
 // Holds the live-session state above the individual screens, so a recording
 // keeps running (and the transcript keeps growing) while the user switches
@@ -32,7 +32,7 @@ export function CaptureProvider({ children }) {
   const [minutes, setMinutes] = useState(null); // the editable minutes draft (Module 06)
   const [mode, setMode] = useState("mic"); // 'mic' | 'video' — which capture mode is (or was last) active
   const [videoState, setVideoState] = useState("idle"); // idle | creating | in-call | error
-  const [roomUrl, setRoomUrl] = useState("");
+  const [inviteUrl, setInviteUrl] = useState(""); // link for other participants to join, via our own app
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [participants, setParticipants] = useState([]);
@@ -56,9 +56,9 @@ export function CaptureProvider({ children }) {
   const failedRef = useRef([]);
   const recorderRef = useRef(null);
   const timerRef = useRef(null);
-  const callRef = useRef(null); // the active Daily call object, video mode only
+  const roomRef = useRef(null); // the active LiveKit Room, video mode only
   const videoCtxRef = useRef(null); // one shared AudioContext for every participant track
-  const trackRecordersRef = useRef(new Map()); // sessionId -> { stop() }
+  const trackRecordersRef = useRef(new Map()); // participant identity -> { stop() }
 
   // Segments are processed one at a time, in order, so speaker labels stay consistent.
   async function transcribeSegment(seg) {
@@ -164,23 +164,32 @@ export function CaptureProvider({ children }) {
   }
 
   // ---- Video meeting mode (Module 04, "Video meeting") ----
-  // The Chair's browser joins a Daily.co room headlessly (no Daily UI chrome)
-  // and renders its own tiles. Every participant's audio track is captured
-  // and transcribed separately, tagged with their real name — no speaker
-  // guessing needed. Everyone else just opens the room link; Daily serves its
-  // own ready-made call page there, no app required on their end.
-  function syncParticipants(call) {
-    const all = call.participants();
-    setParticipants(
-      Object.values(all).map((p) => ({
-        id: p.session_id,
-        name: p.local ? "You" : p.user_name || "Guest",
-        local: p.local,
-        audioOn: !!p.audio,
-        videoOn: !!p.video,
-        videoTrack: p.tracks?.video?.state === "playable" ? p.tracks.video.track : null,
-      }))
-    );
+  // The Chair's browser joins a LiveKit room with our own lightweight UI.
+  // Every participant's audio track arrives as a plain MediaStreamTrack
+  // (LiveKit exposes this directly, no restricted "prebuilt" mode to work
+  // around), so it's captured and transcribed separately, tagged with their
+  // real name — no speaker guessing needed. Guests open an invite link that
+  // lands on a small join screen inside this same app (LiveKit, unlike
+  // Daily, doesn't host a ready-made call page of its own).
+  const inviteLinkFor = (room) => `${window.location.origin}${window.location.pathname}?join=${room}`;
+
+  function syncParticipants(room) {
+    const local = room.localParticipant;
+    const remotes = Array.from(room.remoteParticipants.values());
+    const toTile = (p, isLocal) => ({
+      id: isLocal ? "local" : p.identity,
+      name: isLocal ? "You" : p.name || "Guest",
+      local: isLocal,
+      audioOn: isLocal ? local.isMicrophoneEnabled : Array.from(p.audioTrackPublications.values()).some((t) => !t.isMuted),
+      videoOn: isLocal ? local.isCameraEnabled : Array.from(p.videoTrackPublications.values()).some((t) => !t.isMuted),
+      videoTrack: (() => {
+        const pub = isLocal
+          ? Array.from(local.videoTrackPublications.values())[0]
+          : Array.from(p.videoTrackPublications.values())[0];
+        return pub?.track?.mediaStreamTrack || null;
+      })(),
+    });
+    setParticipants([toTile(local, true), ...remotes.map((p) => toTile(p, false))]);
   }
 
   async function startVideoMeeting(name) {
@@ -194,12 +203,9 @@ export function CaptureProvider({ children }) {
     setVideoState("creating");
     setError("");
 
-    try {
-      const res = await fetch("/api/meeting-ai?op=room", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw Object.assign(new Error(data.error || "Could not create the video room."), { detail: data.detail });
-      setRoomUrl(data.url);
+    const roomName = `meet-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+    try {
       let ctx;
       try {
         ctx = new AudioContext();
@@ -208,76 +214,90 @@ export function CaptureProvider({ children }) {
       }
       videoCtxRef.current = ctx;
 
-      const call = Daily.createCallObject();
-      callRef.current = call;
+      const res = await fetch("/api/meeting-ai?op=livekit-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: roomName, name: name || "Chair" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || "Could not create the video room."), { detail: data.detail });
 
-      const keyFor = (participant) => (participant.local ? "local" : participant.session_id);
+      const room = new Room({ adaptiveStream: true, dynacast: true });
+      roomRef.current = room;
 
-      const attach = (participant, track) => {
-        const key = keyFor(participant);
-        if (trackRecordersRef.current.has(key)) return;
-        const label = participant.local ? name || "Chair" : participant.user_name || "Guest";
+      const attach = (identity, track, participantLabel) => {
+        if (trackRecordersRef.current.has(identity)) return;
         const rec = createTrackRecorder({
           track,
           sharedCtx: ctx,
-          participantLabel: label,
+          participantLabel,
           onSegment: enqueue,
-          onLevel: participant.local ? setLevel : undefined,
+          onLevel: identity === "local" ? setLevel : undefined,
           onError: (e) => setError(e.message || "Recording error."),
         });
-        trackRecordersRef.current.set(key, rec);
+        trackRecordersRef.current.set(identity, rec);
       };
-      const detach = (participant) => {
-        const key = keyFor(participant);
-        trackRecordersRef.current.get(key)?.stop();
-        trackRecordersRef.current.delete(key);
+      const detach = (identity) => {
+        trackRecordersRef.current.get(identity)?.stop();
+        trackRecordersRef.current.delete(identity);
       };
 
-      call
-        .on("joined-meeting", () => {
-          setVideoState("in-call");
-          setStatus("recording");
-          timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-          syncParticipants(call);
-          setMicOn(!!call.localAudio());
-          setCamOn(!!call.localVideo());
+      room
+        .on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+          if (track.kind === "audio") attach(participant.identity, track.mediaStreamTrack, participant.name || "Guest");
+          syncParticipants(room);
         })
-        .on("participant-joined", () => syncParticipants(call))
-        .on("participant-updated", () => syncParticipants(call))
-        .on("participant-left", (ev) => {
-          detach(ev.participant);
-          syncParticipants(call);
+        .on(RoomEvent.TrackUnsubscribed, (track, _pub, participant) => {
+          if (track.kind === "audio") detach(participant.identity);
+          syncParticipants(room);
         })
-        .on("track-started", (ev) => {
-          if (ev.type === "audio") attach(ev.participant, ev.track);
-          syncParticipants(call);
+        .on(RoomEvent.LocalTrackPublished, (pub) => {
+          if (pub.kind === "audio" && pub.track) attach("local", pub.track.mediaStreamTrack, name || "Chair");
+          syncParticipants(room);
         })
-        .on("track-stopped", (ev) => {
-          if (ev.type === "audio") detach(ev.participant);
+        .on(RoomEvent.ParticipantConnected, () => syncParticipants(room))
+        .on(RoomEvent.ParticipantDisconnected, (p) => {
+          detach(p.identity);
+          syncParticipants(room);
         })
-        .on("error", (ev) => setError(ev.errorMsg || "Video call error."));
+        .on(RoomEvent.Disconnected, () => leaveVideoMeeting());
 
-      await call.join({ url: data.url, userName: name || "Chair" });
+      await room.connect(data.url, data.token);
+      await room.localParticipant.enableCameraAndMicrophone();
+
+      setInviteUrl(inviteLinkFor(roomName));
+      setVideoState("in-call");
+      setStatus("recording");
+      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+      syncParticipants(room);
+      setMicOn(true);
+      setCamOn(true);
     } catch (err) {
       setVideoState("error");
       const detail = err.detail ? ` (${String(err.detail).slice(0, 180)})` : "";
       setError((err.message || "Could not start the video meeting.") + detail);
+      try {
+        await videoCtxRef.current?.close();
+      } catch {
+        /* already closed */
+      }
+      videoCtxRef.current = null;
     }
   }
 
-  function toggleMic() {
-    const call = callRef.current;
-    if (!call) return;
+  async function toggleMic() {
+    const room = roomRef.current;
+    if (!room) return;
     const next = !micOn;
-    call.setLocalAudio(next);
+    await room.localParticipant.setMicrophoneEnabled(next);
     setMicOn(next);
   }
 
-  function toggleCam() {
-    const call = callRef.current;
-    if (!call) return;
+  async function toggleCam() {
+    const room = roomRef.current;
+    if (!room) return;
     const next = !camOn;
-    call.setLocalVideo(next);
+    await room.localParticipant.setCameraEnabled(next);
     setCamOn(next);
   }
 
@@ -286,12 +306,11 @@ export function CaptureProvider({ children }) {
     trackRecordersRef.current.forEach((r) => r.stop());
     trackRecordersRef.current.clear();
     try {
-      await callRef.current?.leave();
+      await roomRef.current?.disconnect();
     } catch {
       /* already gone */
     }
-    callRef.current?.destroy();
-    callRef.current = null;
+    roomRef.current = null;
     try {
       await videoCtxRef.current?.close();
     } catch {
@@ -299,7 +318,7 @@ export function CaptureProvider({ children }) {
     }
     videoCtxRef.current = null;
     setParticipants([]);
-    setRoomUrl("");
+    setInviteUrl("");
     setVideoState("idle");
     setStatus("idle");
     setLevel(0);
@@ -357,7 +376,7 @@ export function CaptureProvider({ children }) {
     status, elapsed, level, lines, pending, failed, error,
     meetingId, setMeetingId, speakerNames, nameOf, saveState,
     meetings, meetingsState, minutes, setMinutes,
-    mode, videoState, roomUrl, micOn, camOn, participants,
+    mode, videoState, inviteUrl, micOn, camOn, participants,
     startVideoMeeting, leaveVideoMeeting, toggleMic, toggleCam,
     start, stop, reset, retryFailed, renameSpeaker, saveToMeeting,
     dismissError: () => setError(""),

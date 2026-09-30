@@ -16,7 +16,8 @@
     "vite": "^8.1.1"
   },
   "dependencies": {
-    "@daily-co/daily-js": "^0.92.2",
+    "livekit-client": "^2.22.3",
+    "livekit-server-sdk": "^2.19.1",
     "lucide-react": "^1.27.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

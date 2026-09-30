@@ -10,18 +10,18 @@
 //   POST /api/meeting-ai?op=save        -> attach a transcript to a meeting
 //   POST /api/meeting-ai?op=minutes     -> transcript/text -> draft minutes + resolution
 //   POST /api/meeting-ai?op=save-minutes -> attach reviewed minutes to a meeting
-//   POST /api/meeting-ai?op=room         -> create a Daily.co video room for the session
+//   POST /api/meeting-ai?op=livekit-token  -> mint a LiveKit token to join a video room
 
 import transcribe from "../server/meeting-ai/transcribe.js";
 import meetings from "../server/meeting-ai/meetings.js";
 import save from "../server/meeting-ai/save.js";
 import minutes from "../server/meeting-ai/minutes.js";
 import saveMinutes from "../server/meeting-ai/save-minutes.js";
-import room from "../server/meeting-ai/room.js";
+import livekitToken from "../server/meeting-ai/livekit-token.js";
 
 export const config = { maxDuration: 60 };
 
-const OPS = { transcribe, meetings, save, minutes, "save-minutes": saveMinutes, room };
+const OPS = { transcribe, meetings, save, minutes, "save-minutes": saveMinutes, "livekit-token": livekitToken };
 
 export default async function handler(req, res) {
   const op = req.query?.op;
