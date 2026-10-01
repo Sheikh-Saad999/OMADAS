@@ -1,4 +1,4 @@
-# OMADMS — Office Minutes, Agenda & Documentation Management System
+# MeetIntel — Office Minutes, Agenda & Documentation Management System
 
 AI-powered, cloud-based platform that digitizes the full university meeting lifecycle — scheduling, agenda, approvals, live recording, transcription, minutes/resolutions, follow-ups, and historical search — across every faculty and department.
 
