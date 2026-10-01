@@ -18,10 +18,11 @@ import save from "../server/meeting-ai/save.js";
 import minutes from "../server/meeting-ai/minutes.js";
 import saveMinutes from "../server/meeting-ai/save-minutes.js";
 import livekitToken from "../server/meeting-ai/livekit-token.js";
+import livekitDebug from "../server/meeting-ai/livekit-debug.js";
 
 export const config = { maxDuration: 60 };
 
-const OPS = { transcribe, meetings, save, minutes, "save-minutes": saveMinutes, "livekit-token": livekitToken };
+const OPS = { transcribe, meetings, save, minutes, "save-minutes": saveMinutes, "livekit-token": livekitToken, "livekit-debug": livekitDebug };
 
 export default async function handler(req, res) {
   const op = req.query?.op;

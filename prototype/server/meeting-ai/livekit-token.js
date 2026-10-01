@@ -17,9 +17,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const url = process.env.LIVEKIT_URL;
+  const apiKey = (process.env.LIVEKIT_API_KEY || "").trim();
+  const apiSecret = (process.env.LIVEKIT_API_SECRET || "").trim();
+  const url = (process.env.LIVEKIT_URL || "").trim();
   if (!apiKey || !apiSecret || !url) {
     return res.status(500).json({ error: "Video meetings are not configured on the server." });
   }
